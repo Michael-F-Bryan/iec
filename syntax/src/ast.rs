@@ -1,8 +1,9 @@
-use codespan::{ByteIndex, ByteSpan};
+use codespan::ByteSpan;
 use serde_derive::{Deserialize, Serialize};
+use std::any::Any;
 
-pub(crate) fn s(start: usize, end: usize) -> ByteSpan {
-    ByteSpan::new(ByteIndex(start as u32), ByteIndex(end as u32))
+pub trait AstNode: Any {
+    fn span(&self) -> ByteSpan;
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -52,6 +53,51 @@ pub struct Assignment {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Expression {
     Literal(Literal),
+    Variable(Identifier),
+    Binary(BinaryExpression),
+    Unary(UnaryExpression),
+    Call(FunctionCall),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryExpression {
+    pub left: Box<Expression>,
+    pub right: Box<Expression>,
+    pub op: BinOp,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub enum BinOp {
+    Add,
+    Subtract,
+    Or,
+    Xor,
+    And,
+    Equals,
+    NotEquals,
+    LessThan,
+    GreaterThan,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
+    Multiply,
+    Divide,
+    Modulo,
+    Not,
+    Exponent,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UnaryExpression {
+    pub value: Box<Expression>,
+    pub op: UnaryOp,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub enum UnaryOp {
+    Not,
+    Negate,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -107,9 +153,59 @@ impl<'a> From<&'a str> for LiteralKind {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionCall {
+    pub name: Identifier,
+    pub args: Vec<FunctionArg>,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum FunctionArg {
+    Bare(Expression),
+    Named(Assignment),
+}
+
+macro_rules! impl_ast_node {
+    ($name:tt => $($variant:tt)|*) => {
+        impl AstNode for $name {
+            fn span(&self) -> ByteSpan {
+                match self {
+                    $(
+                        $name::$variant(ref inner) => inner.span(),
+                    )*
+                }
+            }
+        }
+    };
+    ($($name:ty),*) => {
+        $(
+            impl AstNode for $name {
+                fn span(&self) -> ByteSpan {
+                    self.span
+                }
+            }
+        )*
+    };
+}
+
+impl_ast_node!(
+    Literal,
+    Assignment,
+    Declaration,
+    Identifier,
+    BinaryExpression,
+    UnaryExpression,
+    FunctionCall
+);
+impl_ast_node!(Expression => Literal | Binary | Unary | Variable | Call);
+impl_ast_node!(Statement => Declaration);
+impl_ast_node!(FunctionArg => Bare | Named);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::*;
     use pretty_assertions::assert_eq;
 
     macro_rules! parse_test {
@@ -141,4 +237,79 @@ mod tests {
         }),
         span: s(0, 21),
     });
+
+    parse_test!(function_call, ExprParser, "foo()" => Expression::Call(FunctionCall {
+        name: Identifier::new("foo", s(0, 3)),
+        args: Vec::new(),
+        span: s(0, 5),
+    }));
+
+    parse_test!(function_call_with_args, ExprParser, "foo(1, second := 2)" => Expression::Call(FunctionCall {
+        name: Identifier::new("foo", s(0, 3)),
+        args: vec![
+            FunctionArg::Bare(Expression::Literal(Literal::new(1, s(4, 5)))),
+            FunctionArg::Named(Assignment {
+                variable: Identifier::new("second", s(7, 13)),
+                value: Expression::Literal(Literal::new(2, s(17, 18))),
+                span: s(7, 18),
+            }),
+        ],
+        span: s(0, 19),
+    }));
+
+    parse_test!(super_complex_expression, ExprParser, "5*5 + add(-(9**2), -34/pi)" =>
+        Expression::Binary(BinaryExpression {
+            left: Box::new(Expression::Binary(BinaryExpression {
+                left: Box::new(Expression::Literal(Literal {
+                    kind: LiteralKind::Integer(5),
+                    span: s(0, 1),
+                })),
+                right: Box::new(Expression::Literal(Literal {
+                    kind: LiteralKind::Integer(5),
+                    span: s(2, 3),
+                })),
+                op: BinOp::Multiply,
+                span: s(0, 3),
+            })),
+            right: Box::new(Expression::Call(FunctionCall {
+                name: Identifier {
+                    value: String::from("add"),
+                    span: s(6, 9),
+                },
+                args: vec![
+                    FunctionArg::Bare(Expression::Unary(UnaryExpression {
+                        value: Box::new(Expression::Binary(BinaryExpression {
+                            left: Box::new(Expression::Literal(Literal {
+                                kind: LiteralKind::Integer(9),
+                                span: s(12, 13),
+                            })),
+                            right: Box::new(Expression::Literal(Literal {
+                                kind: LiteralKind::Integer(2),
+                                span: s(15, 16),
+                            })),
+                            op: BinOp::Exponent,
+                            span: s(12, 16),
+                        })),
+                        op: UnaryOp::Negate,
+                        span: s(10, 17),
+                    })),
+                    FunctionArg::Bare(Expression::Binary(BinaryExpression {
+                        left: Box::new(Expression::Literal(Literal {
+                            kind: LiteralKind::Integer(-34),
+                            span: s(19, 22),
+                        })),
+                        right: Box::new(Expression::Variable(Identifier {
+                            value: String::from("pi"),
+                            span: s(23, 25),
+                        })),
+                        op: BinOp::Divide,
+                        span: s(19, 25),
+                    })),
+                ],
+                span: s(6, 26),
+            })),
+            op: BinOp::Add,
+            span: s(0, 26),
+        })
+    );
 }

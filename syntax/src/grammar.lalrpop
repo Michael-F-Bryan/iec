@@ -1,12 +1,16 @@
-use crate::ast::{s, Identifier, Declaration, Statement, Literal, LiteralKind, Assignment, Expression};
+use crate::utils::{s, bop, unop};
+use crate::ast::{Identifier, Declaration, Statement, Literal, LiteralKind, 
+    Assignment, Expression, BinOp, UnaryOp, FunctionCall, FunctionArg};
 
 grammar;
 
 match {
-    ";",
-    ":",
     "(?i)true" => TRUE,
     "(?i)false" => FALSE,
+    "(?i)xor" => XOR,
+    "(?i)or" => OR,
+    "(?i)and" => AND,
+    "(?i)not" => NOT,
     r"-?\d+" => INTEGER,
 } else {
     r"[\w_][\w_\d]*" => IDENT,
@@ -48,5 +52,79 @@ pub Assignment: Assignment = {
 };
 
 pub Expr: Expression = {
+    <l:@L> <left:XorExpr> OR <right:XorExpr> <r:@R> => bop(left, right, BinOp::Or, s(l, r)),
+    <XorExpr> => <>,
+};
+
+XorExpr: Expression = {
+    <l:@L> <left:AndExpr> XOR <right:AndExpr> <r:@R> => bop(left, right, BinOp::Xor, s(l, r)),
+    <AndExpr> => <>,
+};
+
+AndExpr: Expression = {
+    <l:@L> <left:Comparison> AND <right:Comparison> <r:@R> => bop(left, right, BinOp::And, s(l, r)),
+    <Comparison> => <>,
+};
+
+Comparison: Expression = {
+    <l:@L> <left:EquExpression> "=" <right:EquExpression> <r:@R> => bop(left, right, BinOp::Equals, s(l, r)),
+    <l:@L> <left:EquExpression> "<>" <right:EquExpression> <r:@R> => bop(left, right, BinOp::NotEquals, s(l, r)),
+    <EquExpression> => <>,
+};
+
+EquExpression: Expression = {
+    <l:@L> <left:AddExpression> "<" <right:AddExpression> <r:@R> => bop(left, right, BinOp::LessThan, s(l, r)),
+    <l:@L> <left:AddExpression> "<=" <right:AddExpression> <r:@R> => bop(left, right, BinOp::LessThanOrEqual, s(l, r)),
+    <l:@L> <left:AddExpression> ">" <right:AddExpression> <r:@R> => bop(left, right, BinOp::GreaterThan, s(l, r)),
+    <l:@L> <left:AddExpression> ">=" <right:AddExpression> <r:@R> => bop(left, right, BinOp::GreaterThanOrEqual, s(l, r)),
+    <AddExpression> => <>,
+};
+
+AddExpression: Expression = {
+    <l:@L> <left:Term> "+" <right:Term> <r:@R> => bop(left, right, BinOp::Add, s(l, r)),
+    <l:@L> <left:Term> "-" <right:Term> <r:@R> => bop(left, right, BinOp::Subtract, s(l, r)),
+    <Term> => <>,
+};
+
+Term: Expression = {
+    <l:@L> <left:PowerExpression> "*" <right:PowerExpression> <r:@R> => bop(left, right, BinOp::Multiply, s(l, r)),
+    <l:@L> <left:PowerExpression> "/" <right:PowerExpression> <r:@R> => bop(left, right, BinOp::Divide, s(l, r)),
+    <l:@L> <left:PowerExpression> "%" <right:PowerExpression> <r:@R> => bop(left, right, BinOp::Modulo, s(l, r)),
+    <PowerExpression> => <>,
+};
+
+PowerExpression: Expression = {
+    <l:@L> <left:UnaryExpression> "**" <right:UnaryExpression> <r:@R> => bop(left, right, BinOp::Exponent, s(l, r)),
+    <UnaryExpression> => <>,
+};
+
+UnaryExpression: Expression = {
+    <l:@L> "-" <expr:PrimaryExpression> <r:@R> => unop(expr, UnaryOp::Negate, s(l, r)),
+    <l:@L> NOT <expr:PrimaryExpression> <r:@R> => unop(expr, UnaryOp::Not, s(l, r)),
+    <PrimaryExpression> => <>,
+};
+
+PrimaryExpression: Expression = {
     <Lit> => Expression::Literal(<>),
+    <Ident> => Expression::Variable(<>),
+    "(" <Expr> ")" => <>,
+    <l:@L> <name:Ident> "(" <args:Comma<FuncArg>> ")" <r:@R> => Expression::Call(FunctionCall {
+        name, args, span: s(l, r),
+    }),
+};
+
+FuncArg: FunctionArg = {
+    <Assignment> => FunctionArg::Named(<>),
+    <Expr> => FunctionArg::Bare(<>),
+};
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
 };
