@@ -1,0 +1,10 @@
+[package]
+name = "iec_syntax"
+version = "0.1.0"
+authors = ["Michael Bryan <michaelfbryan@gmail.com>"]
+edition = "2018"
+description = "Parser/lexer frontend for an IEC 61131-3 compiler."
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+
+[dependencies]
