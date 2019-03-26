@@ -1,15 +1,52 @@
-use crate::ast::{Identifier, Declaration, Statement, s};
+use crate::ast::{s, Identifier, Declaration, Statement, Literal, LiteralKind, Assignment, Expression};
 
 grammar;
 
+match {
+    ";",
+    ":",
+    "(?i)true" => TRUE,
+    "(?i)false" => FALSE,
+    r"-?\d+" => INTEGER,
+} else {
+    r"[\w_][\w_\d]*" => IDENT,
+    _,
+}
+
+pub Statements: Vec<Statement> = {
+    <stmts:statement_with_semicolon*> => stmts,
+};
+
+statement_with_semicolon: Statement = {
+    <Stmt> ";" => <>,
+};
+
 pub Stmt: Statement = {
-    <Decl> ";" => Statement::Declaration(<>),
+    <Decl> => Statement::Declaration(<>),
 };
 
 pub Ident: Identifier = {
-    <l:@L> <id:r"[\w_][\w_\d]*"> <r:@R> => Identifier::new(id, s(l, r)),
+    <l:@L> <id:IDENT> <r:@R> => Identifier::new(id, s(l, r)),
 };
 
 pub Decl: Declaration = {
     <l:@L> <id:Ident> ":" <ty:Ident> <r:@R> => Declaration::new(id, ty, s(l, r)),
+};
+
+pub Lit: Literal = {
+    <l:@L> <kind:LiteralKind> <r:@R> => Literal::new(kind, s(l, r)),
+};
+
+LiteralKind: LiteralKind = {
+    INTEGER => LiteralKind::Integer(<>.parse().unwrap()),
+    TRUE => LiteralKind::Boolean(true),
+    FALSE => LiteralKind::Boolean(false),
+};
+
+pub Assignment: Assignment = {
+    <l:@L> <id:Ident> ":=" <value:Expr> <r:@R> => Assignment { variable: id, value, span: s(l, r) },
+};
+
+pub Expr: Expression = {
+    <Lit> => Expression::Literal(<>),
 };
