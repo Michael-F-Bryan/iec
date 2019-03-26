@@ -1,0 +1,15 @@
+use crate::ast::{Identifier, Declaration, Statement, s};
+
+grammar;
+
+pub Stmt: Statement = {
+    <Decl> ";" => Statement::Declaration(<>),
+};
+
+pub Ident: Identifier = {
+    <l:@L> <id:r"[\w_][\w_\d]*"> <r:@R> => Identifier::new(id, s(l, r)),
+};
+
+pub Decl: Declaration = {
+    <l:@L> <id:Ident> ":" <ty:Ident> <r:@R> => Declaration::new(id, ty, s(l, r)),
+};

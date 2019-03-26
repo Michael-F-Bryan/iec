@@ -8,3 +8,12 @@ license = "MIT OR Apache-2.0"
 readme = "../README.md"
 
 [dependencies]
+regex = "1.1.2"
+lalrpop-util = "0.16.3"
+codespan = "0.2.1"
+
+[build-dependencies]
+lalrpop = "0.16.3"
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"
