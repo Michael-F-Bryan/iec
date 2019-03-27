@@ -6,9 +6,28 @@ pub trait AstNode: Any {
     fn span(&self) -> ByteSpan;
 }
 
+sum_type::sum_type! {
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub enum Statement {
+        Declaration,
+        Assignment,
+        FunctionCall,
+        ForLoop,
+        WhileLoop,
+        RepeatLoop,
+        Break,
+        Return,
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Statement {
-    Declaration(Declaration),
+pub struct Break {
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Return {
+    pub span: ByteSpan,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -50,13 +69,15 @@ pub struct Assignment {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Expression {
-    Literal(Literal),
-    Variable(Identifier),
-    Binary(BinaryExpression),
-    Unary(UnaryExpression),
-    Call(FunctionCall),
+sum_type::sum_type! {
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub enum Expression {
+        Literal(Literal),
+        Variable(Identifier),
+        Binary(BinaryExpression),
+        Unary(UnaryExpression),
+        FunctionCall(FunctionCall),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -166,6 +187,30 @@ pub enum FunctionArg {
     Named(Assignment),
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ForLoop {
+    pub variable: Identifier,
+    pub start: Expression,
+    pub end: Expression,
+    pub step: Option<Expression>,
+    pub body: Vec<Statement>,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WhileLoop {
+    pub condition: Expression,
+    pub body: Vec<Statement>,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RepeatLoop {
+    pub condition: Expression,
+    pub body: Vec<Statement>,
+    pub span: ByteSpan,
+}
+
 macro_rules! impl_ast_node {
     ($name:tt => $($variant:tt)|*) => {
         impl AstNode for $name {
@@ -178,7 +223,7 @@ macro_rules! impl_ast_node {
             }
         }
     };
-    ($($name:ty),*) => {
+    ($($name:ty,)*) => {
         $(
             impl AstNode for $name {
                 fn span(&self) -> ByteSpan {
@@ -196,10 +241,16 @@ impl_ast_node!(
     Identifier,
     BinaryExpression,
     UnaryExpression,
-    FunctionCall
+    FunctionCall,
+    Return,
+    ForLoop,
+    WhileLoop,
+    RepeatLoop,
+    Break,
 );
-impl_ast_node!(Expression => Literal | Binary | Unary | Variable | Call);
-impl_ast_node!(Statement => Declaration);
+impl_ast_node!(Expression => Literal | Binary | Unary | Variable | FunctionCall);
+impl_ast_node!(Statement => Declaration | FunctionCall | Assignment | Return | ForLoop |
+    WhileLoop | RepeatLoop | Break);
 impl_ast_node!(FunctionArg => Bare | Named);
 
 #[cfg(test)]
@@ -215,7 +266,7 @@ mod tests {
                 #[allow(unused_imports)]
                 use $crate::grammar::*;
                 let got = $parser::new().parse($input).unwrap();
-                assert_eq!(got, $expected);
+                assert_eq!(got, $expected.into());
             }
         };
     }
@@ -238,13 +289,13 @@ mod tests {
         span: s(0, 21),
     });
 
-    parse_test!(function_call, ExprParser, "foo()" => Expression::Call(FunctionCall {
+    parse_test!(function_call, ExprParser, "foo()" => Expression::FunctionCall(FunctionCall {
         name: Identifier::new("foo", s(0, 3)),
         args: Vec::new(),
         span: s(0, 5),
     }));
 
-    parse_test!(function_call_with_args, ExprParser, "foo(1, second := 2)" => Expression::Call(FunctionCall {
+    parse_test!(function_call_with_args, ExprParser, "foo(1, second := 2)" => Expression::FunctionCall(FunctionCall {
         name: Identifier::new("foo", s(0, 3)),
         args: vec![
             FunctionArg::Bare(Expression::Literal(Literal::new(1, s(4, 5)))),
@@ -271,7 +322,7 @@ mod tests {
                 op: BinOp::Multiply,
                 span: s(0, 3),
             })),
-            right: Box::new(Expression::Call(FunctionCall {
+            right: Box::new(Expression::FunctionCall(FunctionCall {
                 name: Identifier {
                     value: String::from("add"),
                     span: s(6, 9),
@@ -312,4 +363,58 @@ mod tests {
             span: s(0, 26),
         })
     );
+
+    parse_test!(break_statement, StmtParser, "break" => Statement::Break(Break { span: s(0, 5)}));
+    parse_test!(return_statement, StmtParser, "reTUrn" => Statement::Return(Return { span: s(0, 6)}));
+
+    parse_test!(simple_for_loop, IterationStatementParser, "for x:= 0 TO 5 do return; end_for" => 
+    Statement::ForLoop(ForLoop {
+        variable: Identifier {
+            value: String::from("x"),
+            span: s(4, 5),
+        },
+        start: Expression::Literal(
+            Literal {
+                kind: LiteralKind::Integer(0),
+                span: s(8, 9),
+            }
+        ),
+        end: Expression::Literal(
+            Literal {
+                kind: LiteralKind::Integer(5),
+                span: s(13, 14),
+            }
+        ),
+        step: None,
+        body: vec![
+            Statement::Return(
+                Return {
+                    span: s(18, 24),
+                }
+            )
+        ],
+        span: s(0, 33),
+    }));
+
+    parse_test!(while_loop, IterationStatementParser, "while true do end_while" => 
+    Statement::WhileLoop(WhileLoop {
+        condition: Expression::Literal(Literal {
+            kind: LiteralKind::Boolean(true),
+            span: s(6, 10),
+        }),
+        body: Vec::new(),
+        span: s(0, 23),
+    }));
+
+    parse_test!(repeat_loop, IterationStatementParser, "repeat return; until true end_repeat" => 
+    Statement::RepeatLoop(RepeatLoop {
+        condition: Expression::Literal(Literal {
+            kind: LiteralKind::Boolean(true),
+            span: s(21, 25),
+        }),
+        body: vec![
+            Statement::Return(Return { span: s(7, 13) }),
+        ],
+        span: s(0, 36),
+    }));
 }

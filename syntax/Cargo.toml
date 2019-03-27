@@ -13,6 +13,7 @@ lalrpop-util = "0.16.3"
 codespan = { version = "0.2.1", features = ["serialization"] }
 serde = "1.0.89"
 serde_derive = "1.0.89"
+sum_type = "0.1.1"
 
 [build-dependencies]
 lalrpop = "0.16.3"

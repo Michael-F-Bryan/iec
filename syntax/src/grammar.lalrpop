@@ -1,16 +1,31 @@
 use crate::utils::{s, bop, unop};
 use crate::ast::{Identifier, Declaration, Statement, Literal, LiteralKind, 
-    Assignment, Expression, BinOp, UnaryOp, FunctionCall, FunctionArg};
+    Assignment, Expression, BinOp, UnaryOp, FunctionCall, FunctionArg, Return,
+    Break, ForLoop, WhileLoop, RepeatLoop};
 
 grammar;
 
 match {
-    "(?i)true" => TRUE,
-    "(?i)false" => FALSE,
-    "(?i)xor" => XOR,
-    "(?i)or" => OR,
-    "(?i)and" => AND,
-    "(?i)not" => NOT,
+    // keywords get first priority
+    r"(?i)true" => TRUE,
+    r"(?i)false" => FALSE,
+    r"(?i)xor" => XOR,
+    r"(?i)or" => OR,
+    r"(?i)and" => AND,
+    r"(?i)not" => NOT,
+    r"(?i)return" => RETURN,
+    r"(?i)break" => BREAK,
+    r"(?i)for" => FOR,
+    r"(?i)end_for" => END_FOR,
+    r"(?i)to" => TO,
+    r"(?i)do" => DO,
+    r"(?i)by" => BY,
+    r"(?i)while" => WHILE,
+    r"(?i)end_while" => END_WHILE,
+    r"(?i)repeat" => REPEAT,
+    r"(?i)until" => UNTIL,
+    r"(?i)end_repeat" => END_REPEAT,
+} else {
     r"-?\d+" => INTEGER,
 } else {
     r"[\w_][\w_\d]*" => IDENT,
@@ -27,6 +42,10 @@ statement_with_semicolon: Statement = {
 
 pub Stmt: Statement = {
     <Decl> => Statement::Declaration(<>),
+    <Assignment> => Statement::Assignment(<>),
+    <FunctionCall> => Statement::FunctionCall(<>),
+    <l:@L> BREAK <r:@R> => Statement::Break(Break { span: s(l, r) }),
+    <l:@L> RETURN <r:@R> => Statement::Return(Return { span: s(l, r) }),
 };
 
 pub Ident: Identifier = {
@@ -108,15 +127,53 @@ PrimaryExpression: Expression = {
     <Lit> => Expression::Literal(<>),
     <Ident> => Expression::Variable(<>),
     "(" <Expr> ")" => <>,
-    <l:@L> <name:Ident> "(" <args:Comma<FuncArg>> ")" <r:@R> => Expression::Call(FunctionCall {
+    <FunctionCall> => Expression::FunctionCall(<>),
+};
+
+FunctionCall: FunctionCall = {
+    <l:@L> <name:Ident> "(" <args:Comma<FuncArg>> ")" <r:@R> => FunctionCall {
         name, args, span: s(l, r),
-    }),
+    },
 };
 
 FuncArg: FunctionArg = {
     <Assignment> => FunctionArg::Named(<>),
     <Expr> => FunctionArg::Bare(<>),
 };
+
+pub IterationStatement: Statement = {
+    <ForLoop> => <>,
+    <WhileLoop> => <>,
+    <RepeatLoop> => <>,
+};
+
+ForLoop: Statement = {
+    <l:@L> FOR <var:Ident> ":=" <start:Expr> TO <end:Expr> 
+    <step:(BY <Expr>)?> DO <body:Statements> END_FOR <r:@R> => Statement::ForLoop(ForLoop {
+        variable: var,
+        start,
+        end,
+        step,
+        body,
+        span: s(l, r)
+    }),
+}
+
+WhileLoop: Statement = {
+    <l:@L> WHILE <condition:Expr> DO <body:Statements> END_WHILE <r:@R> => Statement::WhileLoop(WhileLoop {
+        condition,
+        body,
+        span: s(l, r),
+    }),
+}
+
+RepeatLoop: Statement = {
+    <l:@L> REPEAT <body:Statements> UNTIL <condition:Expr> END_REPEAT <r:@R> => Statement::RepeatLoop(RepeatLoop {
+        condition,
+        body,
+        span: s(l, r),
+    }),
+}
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e {
