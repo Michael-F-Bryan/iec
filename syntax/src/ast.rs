@@ -15,13 +15,13 @@ sum_type::sum_type! {
         ForLoop,
         WhileLoop,
         RepeatLoop,
-        Break,
+        Exit,
         Return,
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Break {
+pub struct Exit {
     pub span: ByteSpan,
 }
 
@@ -211,6 +211,20 @@ pub struct RepeatLoop {
     pub span: ByteSpan,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VarBlock {
+    pub declarations: Vec<Declaration>,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Program {
+    pub name: Identifier,
+    pub var: Option<VarBlock>,
+    pub body: Vec<Statement>,
+    pub span: ByteSpan,
+}
+
 macro_rules! impl_ast_node {
     ($name:tt => $($variant:tt)|*) => {
         impl AstNode for $name {
@@ -246,11 +260,13 @@ impl_ast_node!(
     ForLoop,
     WhileLoop,
     RepeatLoop,
-    Break,
+    Exit,
+    VarBlock,
+    Program,
 );
 impl_ast_node!(Expression => Literal | Binary | Unary | Variable | FunctionCall);
 impl_ast_node!(Statement => Declaration | FunctionCall | Assignment | Return | ForLoop |
-    WhileLoop | RepeatLoop | Break);
+    WhileLoop | RepeatLoop | Exit);
 impl_ast_node!(FunctionArg => Bare | Named);
 
 #[cfg(test)]
@@ -364,7 +380,7 @@ mod tests {
         })
     );
 
-    parse_test!(break_statement, StmtParser, "break" => Statement::Break(Break { span: s(0, 5)}));
+    parse_test!(exit_statement, StmtParser, "exit" => Statement::Exit(Exit { span: s(0, 4)}));
     parse_test!(return_statement, StmtParser, "reTUrn" => Statement::Return(Return { span: s(0, 6)}));
 
     parse_test!(simple_for_loop, IterationStatementParser, "for x:= 0 TO 5 do return; end_for" => 
@@ -417,4 +433,105 @@ mod tests {
         ],
         span: s(0, 36),
     }));
+
+    parse_test!(single_var_block, BlockParser, "var i: INT; end_var" => VarBlock {
+        declarations: vec![Declaration {
+            ident: Identifier {
+                value: String::from("i"),
+                span: s(4, 5),
+            },
+            ty: Identifier {
+                value: String::from("INT"),
+                span: s(7, 10),
+            },
+            span: s(4, 10),
+        }],
+        span: s(0, 19),
+    });
+
+    const EXAMPLE_PROGRAM: &str = "
+PROGRAM main
+    VAR
+        i : INT;
+    END_VAR
+
+    i := 0;
+    REPEAT
+        i := i + 1;
+    UNTIL i >= 10
+    END_REPEAT;
+END_PROGRAM";
+
+    fn example_program_parsed() -> Program {
+        Program {
+            name: Identifier {
+                value: String::from("main"),
+                span: s(9, 13),
+            },
+            var: Some(VarBlock {
+                declarations: vec![Declaration {
+                    ident: Identifier {
+                        value: String::from("i"),
+                        span: s(30, 31),
+                    },
+                    ty: Identifier {
+                        value: String::from("INT"),
+                        span: s(34, 37),
+                    },
+                    span: s(30, 37),
+                }],
+                span: s(18, 50),
+            }),
+            body: vec![
+                Statement::Assignment(Assignment {
+                    variable: Identifier {
+                        value: String::from("i"),
+                        span: s(56, 57),
+                    },
+                    value: Expression::Literal(Literal {
+                        kind: LiteralKind::Integer(0),
+                        span: s(61, 62),
+                    }),
+                    span: s(56, 62),
+                }),
+                Statement::RepeatLoop(RepeatLoop {
+                    condition: Expression::Binary(BinaryExpression {
+                        left: Box::new(Expression::Variable(Identifier {
+                            value: String::from("i"),
+                            span: s(105, 106),
+                        })),
+                        right: Box::new(Expression::Literal(Literal {
+                            kind: LiteralKind::Integer(10),
+                            span: s(110, 112),
+                        })),
+                        op: BinOp::GreaterThanOrEqual,
+                        span: s(105, 112),
+                    }),
+                    body: vec![Statement::Assignment(Assignment {
+                        variable: Identifier {
+                            value: String::from("i"),
+                            span: s(83, 84),
+                        },
+                        value: Expression::Binary(BinaryExpression {
+                            left: Box::new(Expression::Variable(Identifier {
+                                value: String::from("i"),
+                                span: s(88, 89),
+                            })),
+                            right: Box::new(Expression::Literal(Literal {
+                                kind: LiteralKind::Integer(1),
+                                span: s(92, 93),
+                            })),
+                            op: BinOp::Add,
+                            span: s(88, 93),
+                        }),
+                        span: s(83, 93),
+                    })],
+                    span: s(68, 127),
+                }),
+            ],
+            span: s(1, 140),
+        }
+    }
+
+    parse_test!(trivial_program, ProgramParser, EXAMPLE_PROGRAM => example_program_parsed());
 }
