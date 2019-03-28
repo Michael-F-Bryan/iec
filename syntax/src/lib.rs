@@ -21,3 +21,15 @@ lalrpop_util::lalrpop_mod!(
     #[allow(dead_code)]
     grammar
 );
+
+use codespan::ByteIndex;
+
+pub fn parse(
+    src: &str,
+) -> Result<Program, lalrpop_util::ParseError<ByteIndex, String, &'static str>>
+{
+    crate::grammar::ProgramParser::new()
+        .parse(src)
+        .map_err(|e| e.map_location(|loc| ByteIndex(loc as u32)))
+        .map_err(|e| e.map_token(|tok| tok.to_string()))
+}
