@@ -1,0 +1,12 @@
+[package]
+name = "iec"
+version = "0.1.0"
+authors = ["Michael Bryan <michaelfbryan@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+iec_syntax = { path = "../syntax" }
+serde_derive = "1.0.89"
+serde = "1.0.89"
+codespan-reporting = "0.2.1"
+codespan = "0.2.1"
