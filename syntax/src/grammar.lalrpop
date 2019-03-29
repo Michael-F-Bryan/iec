@@ -5,34 +5,58 @@ grammar;
 
 match {
     // keywords get first priority
-    r"(?i)true" => TRUE,
-    r"(?i)false" => FALSE,
-    r"(?i)xor" => XOR,
-    r"(?i)or" => OR,
     r"(?i)and" => AND,
-    r"(?i)not" => NOT,
-    r"(?i)return" => RETURN,
-    r"(?i)exit" => EXIT,
-    r"(?i)for" => FOR,
-    r"(?i)end_for" => END_FOR,
-    r"(?i)to" => TO,
-    r"(?i)do" => DO,
+    r"(?i)begin" => BEGIN,
     r"(?i)by" => BY,
-    r"(?i)while" => WHILE,
-    r"(?i)end_while" => END_WHILE,
-    r"(?i)repeat" => REPEAT,
-    r"(?i)until" => UNTIL,
-    r"(?i)end_repeat" => END_REPEAT,
-    r"(?i)var" => VAR,
-    r"(?i)end_var" => END_VAR,
-    r"(?i)program" => PROGRAM,
+    r"(?i)do" => DO,
+    r"(?i)end_for" => END_FOR,
+    r"(?i)end_function" => END_FUNCTION,
     r"(?i)end_program" => END_PROGRAM,
+    r"(?i)end_repeat" => END_REPEAT,
+    r"(?i)end_var" => END_VAR,
+    r"(?i)end_while" => END_WHILE,
+    r"(?i)exit" => EXIT,
+    r"(?i)false" => FALSE,
+    r"(?i)for" => FOR,
+    r"(?i)function" => FUNCTION,
+    r"(?i)not" => NOT,
+    r"(?i)or" => OR,
+    r"(?i)program" => PROGRAM,
+    r"(?i)repeat" => REPEAT,
+    r"(?i)return" => RETURN,
+    r"(?i)to" => TO,
+    r"(?i)true" => TRUE,
+    r"(?i)until" => UNTIL,
+    r"(?i)var" => VAR,
+    r"(?i)while" => WHILE,
+    r"(?i)xor" => XOR,
 } else {
     r"-?\d+" => INTEGER,
 } else {
     r"[\w_][\w_\d]*" => IDENT,
     _,
 }
+
+pub File: File = {
+    <l:@L> <items:Item*> <r:@R> => File { items, span: s(l, r) },
+};
+
+Item: Item = {
+    <Program> => Item::Program(<>),
+    <Function> => Item::Function(<>),
+};
+
+Function: Function = {
+    <l:@L> FUNCTION <name:Ident> ":" <return_value:Ident> BEGIN
+     <body:Statements> 
+     END_FUNCTION <r:@R> => 
+    Function {
+        name,
+        return_value,
+        body,
+        span: s(l, r),
+    },
+};
 
 pub Statements: Vec<Statement> = {
     <stmts:statement_with_semicolon*> => stmts,
@@ -43,7 +67,6 @@ statement_with_semicolon: Statement = {
 };
 
 pub Stmt: Statement = {
-    <Decl> => Statement::Declaration(<>),
     <Assignment> => Statement::Assignment(<>),
     <FunctionCall> => Statement::FunctionCall(<>),
     <IterationStatement> => <>,
@@ -52,7 +75,7 @@ pub Stmt: Statement = {
 };
 
 pub Ident: Identifier = {
-    <l:@L> <id:IDENT> <r:@R> => Identifier::new(id, s(l, r)),
+    <l:@L> <id:IDENT> <r:@R> => Identifier { value: id.to_string(), span: s(l, r) },
 };
 
 pub Decl: Declaration = {
@@ -127,10 +150,17 @@ UnaryExpression: Expression = {
 };
 
 PrimaryExpression: Expression = {
-    <Lit> => Expression::Literal(<>),
-    <Ident> => Expression::Variable(<>),
     "(" <Expr> ")" => <>,
+    <Lit> => Expression::Literal(<>),
+    <Ident> => Expression::Variable(<>.into()),
     <FunctionCall> => Expression::FunctionCall(<>),
+};
+
+DottedIdentifier: DottedIdentifier = {
+    <l:@L> <first:Ident> <tail:("." <Ident>)+> <r:@R> => DottedIdentifier {
+        pieces: ::std::iter::once(first).chain(tail).collect(),
+        span: s(l, r),
+    },
 };
 
 FunctionCall: FunctionCall = {

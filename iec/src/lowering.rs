@@ -1,7 +1,6 @@
 use crate::hir::{
     CompilationUnit, Counter, NodeId, Program, Type, TypeId, Variable,
 };
-use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label, Severity};
 use std::collections::HashMap;
 
@@ -36,20 +35,15 @@ pub fn compile(
 ) -> CompilationUnit {
     let mut analyser = Analyser::new(diags);
 
-    let program = analyser.lower_program(program);
+    analyser.lower_program(program);
 
-    CompilationUnit {
-        programs: vec![program],
-        types: analyser.types,
-        spans: analyser.spans,
-    }
+    analyser.finalise()
 }
 
 struct Analyser<'diag> {
     ids: Counter,
     diags: &'diag mut Diagnostics,
-    spans: HashMap<NodeId, ByteSpan>,
-    types: HashMap<TypeId, Type>,
+    compilation_unit: CompilationUnit,
 }
 
 impl<'diag> Analyser<'diag> {
@@ -57,13 +51,16 @@ impl<'diag> Analyser<'diag> {
         let mut an = Analyser {
             diags,
             ids: Counter::default(),
-            spans: HashMap::default(),
-            types: HashMap::default(),
+            compilation_unit: CompilationUnit::default(),
         };
 
         an.add_builtins();
 
         an
+    }
+
+    fn finalise(self) -> CompilationUnit {
+        self.compilation_unit
     }
 
     fn add_builtins(&mut self) {
@@ -72,19 +69,20 @@ impl<'diag> Analyser<'diag> {
 
     fn add_type<T: Into<Type>>(&mut self, ty: T) -> TypeId {
         let id = self.ids.next_node();
-        self.types.insert(id, ty.into());
+        self.compilation_unit.types.insert(id, ty.into());
         id
     }
 
     fn lookup_type(&self, name: &str) -> Option<TypeId> {
         let name = name.to_lowercase();
-        self.types
+        self.compilation_unit
+            .types
             .iter()
             .find(|(_, ty)| ty.name.to_lowercase() == name)
             .map(|(id, _)| *id)
     }
 
-    fn lower_program(&mut self, original: &iec_syntax::Program) -> Program {
+    fn lower_program(&mut self, original: &iec_syntax::Program) {
         let mut variables = HashMap::new();
         let blocks = HashMap::new();
 
@@ -94,12 +92,15 @@ impl<'diag> Analyser<'diag> {
 
         let dummy_node = self.ids.next_node();
 
-        Program {
+        let p = Program {
             name: original.name.value.clone(),
             entry_point: dummy_node,
             blocks,
             variables,
-        }
+        };
+
+        let id = self.ids.next_node();
+        self.compilation_unit.programs.insert(id, p);
     }
 
     fn analyse_vars(
@@ -116,7 +117,7 @@ impl<'diag> Analyser<'diag> {
                 })
                 .map(|(id, _)| id);
             if let Some(id) = possible_dupe {
-                let original_span = self.spans[id];
+                let original_span = self.compilation_unit.spans[id];
                 let d = Diagnostic::new_error("Duplicate variable definition")
                     .with_label(Label::new_primary(decl.span))
                     .with_label(
@@ -138,7 +139,7 @@ impl<'diag> Analyser<'diag> {
                             ty: id,
                         },
                     );
-                    self.spans.insert(var_id, decl.span);
+                    self.compilation_unit.spans.insert(var_id, decl.span);
                 }
                 None => {
                     let d = Diagnostic::new_error("Unknown type")
@@ -155,8 +156,9 @@ mod tests {
     use super::*;
 
     fn program() -> iec_syntax::Program {
-        let src = "PROGRAM main VAR i: int; END_VAR END_PROGRAM";
-        iec_syntax::parse(src).unwrap()
+        "PROGRAM main VAR i: int; END_VAR END_PROGRAM"
+            .parse()
+            .unwrap()
     }
 
     #[test]
@@ -165,7 +167,9 @@ mod tests {
         let mut diags = Diagnostics::new();
         let mut an = Analyser::new(&mut diags);
 
-        let got = an.lower_program(&program);
+        an.lower_program(&program);
+
+        let got = an.compilation_unit.programs.values().next().unwrap();
 
         assert_eq!(got.name, program.name.value);
         assert_eq!(got.variables.len(), 1);

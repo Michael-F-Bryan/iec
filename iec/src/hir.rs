@@ -13,12 +13,20 @@ pub struct Program {
     pub entry_point: NodeId,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompilationUnit {
     pub types: HashMap<TypeId, Type>,
-    pub programs: Vec<Program>,
+    pub programs: HashMap<NodeId, Program>,
+    pub functions: HashMap<NodeId, Function>,
+    pub function_blocks: HashMap<NodeId, FunctionBlock>,
     pub spans: HashMap<NodeId, ByteSpan>,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Function {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionBlock {}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variable {

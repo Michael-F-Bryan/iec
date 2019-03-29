@@ -19,6 +19,7 @@ mod ast;
 mod utils;
 
 pub use crate::ast::*;
+pub type ParseError = lalrpop_util::ParseError<ByteIndex, String, &'static str>;
 
 lalrpop_util::lalrpop_mod!(
     #[allow(dead_code)]
@@ -27,12 +28,29 @@ lalrpop_util::lalrpop_mod!(
 
 use codespan::ByteIndex;
 
-pub fn parse(
-    src: &str,
-) -> Result<Program, lalrpop_util::ParseError<ByteIndex, String, &'static str>>
-{
-    crate::grammar::ProgramParser::new()
-        .parse(src)
-        .map_err(|e| e.map_location(|loc| ByteIndex(loc as u32)))
-        .map_err(|e| e.map_token(|tok| tok.to_string()))
+macro_rules! impl_from_str {
+    ($name:ident => $parser:ident) => {
+        impl ::std::str::FromStr for $crate::$name {
+            type Err = $crate::ParseError;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                $crate::grammar::$parser::new()
+                    .parse(s)
+                    .map_err(|e| e.map_location(|loc| ByteIndex(loc as u32)))
+                    .map_err(|e| e.map_token(|tok| tok.to_string()))
+            }
+        }
+    };
+    ($( $name:ident => $parser:ident;)*) => {
+        $(
+            impl_from_str!($name => $parser);
+        )*
+    };
+}
+
+impl_from_str! {
+    File => FileParser;
+    Program => ProgramParser;
+    Expression => ExprParser;
+    Statement => StmtParser;
 }

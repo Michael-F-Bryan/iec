@@ -6,10 +6,46 @@ pub trait AstNode: Any {
     fn span(&self) -> ByteSpan;
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct File {
+    pub items: Vec<Item>,
+    pub span: ByteSpan,
+}
+
+sum_type::sum_type! {
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub enum Item {
+        Program,
+        Function,
+        FunctionBlock,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Function {
+    pub name: Identifier,
+    pub return_value: Identifier,
+    pub body: Vec<Statement>,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionBlock {
+    pub name: Identifier,
+    pub span: ByteSpan,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Program {
+    pub name: Identifier,
+    pub var: Option<VarBlock>,
+    pub body: Vec<Statement>,
+    pub span: ByteSpan,
+}
+
 sum_type::sum_type! {
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub enum Statement {
-        Declaration,
         Assignment,
         FunctionCall,
         ForLoop,
@@ -36,11 +72,18 @@ pub struct Identifier {
     pub span: ByteSpan,
 }
 
-impl Identifier {
-    pub fn new<S: Into<String>>(value: S, span: ByteSpan) -> Identifier {
-        Identifier {
-            value: value.into(),
-            span,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DottedIdentifier {
+    pub pieces: Vec<Identifier>,
+    pub span: ByteSpan,
+}
+
+impl From<Identifier> for DottedIdentifier {
+    fn from(id: Identifier) -> DottedIdentifier {
+        let span = id.span;
+        DottedIdentifier {
+            pieces: vec![id],
+            span: span,
         }
     }
 }
@@ -73,7 +116,7 @@ sum_type::sum_type! {
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub enum Expression {
         Literal(Literal),
-        Variable(Identifier),
+        Variable(DottedIdentifier),
         Binary(BinaryExpression),
         Unary(UnaryExpression),
         FunctionCall(FunctionCall),
@@ -217,14 +260,6 @@ pub struct VarBlock {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Program {
-    pub name: Identifier,
-    pub var: Option<VarBlock>,
-    pub body: Vec<Statement>,
-    pub span: ByteSpan,
-}
-
 macro_rules! impl_ast_node {
     ($name:tt => $($variant:tt)|*) => {
         impl AstNode for $name {
@@ -263,9 +298,14 @@ impl_ast_node!(
     Exit,
     VarBlock,
     Program,
+    File,
+    FunctionBlock,
+    Function,
+    DottedIdentifier,
 );
+impl_ast_node!(Item => Function | FunctionBlock | Program);
 impl_ast_node!(Expression => Literal | Binary | Unary | Variable | FunctionCall);
-impl_ast_node!(Statement => Declaration | FunctionCall | Assignment | Return | ForLoop |
+impl_ast_node!(Statement => FunctionCall | Assignment | Return | ForLoop |
     WhileLoop | RepeatLoop | Exit);
 impl_ast_node!(FunctionArg => Bare | Named);
 
@@ -287,17 +327,17 @@ mod tests {
         };
     }
 
-    parse_test!(simple_ident, IdentParser, "hello" => Identifier::new("hello", s(0, 5)));
-    parse_test!(ident_with_numbers, IdentParser, "hello_45" => Identifier::new("hello_45", s(0, 8)));
+    parse_test!(simple_ident, IdentParser, "hello" => Identifier { value: "hello".to_string(), span: s(0, 5) });
+    parse_test!(ident_with_numbers, IdentParser, "hello_45" => Identifier { value: "hello_45".to_string(), span: s(0, 8) });
 
     parse_test!(example_decl, DeclParser, "x: Bool" => Declaration {
-        ident: Identifier::new("x", s(0, 1)),
-        ty: Identifier::new("Bool", s(3, 7)),
+        ident: Identifier { value: "x".to_string(), span: s(0, 1) },
+        ty: Identifier { value: "Bool".to_string(), span: s(3, 7) },
         span: s(0, 7),
     });
 
     parse_test!(assign_literal, AssignmentParser, "meaning_of_life := 42" => Assignment {
-        variable: Identifier::new("meaning_of_life", s(0, 15)),
+        variable: Identifier{ value: "meaning_of_life".to_string(), span: s(0, 15) },
         value: Expression::Literal(Literal {
             kind: LiteralKind::Integer(42),
             span: s(19, 21),
@@ -306,22 +346,35 @@ mod tests {
     });
 
     parse_test!(function_call, ExprParser, "foo()" => Expression::FunctionCall(FunctionCall {
-        name: Identifier::new("foo", s(0, 3)),
+        name: Identifier { value: "foo".to_string(), span: s(0, 3) },
         args: Vec::new(),
         span: s(0, 5),
     }));
 
     parse_test!(function_call_with_args, ExprParser, "foo(1, second := 2)" => Expression::FunctionCall(FunctionCall {
-        name: Identifier::new("foo", s(0, 3)),
+        name: Identifier { value: "foo".to_string(), span: s(0, 3) },
         args: vec![
             FunctionArg::Bare(Expression::Literal(Literal::new(1, s(4, 5)))),
             FunctionArg::Named(Assignment {
-                variable: Identifier::new("second", s(7, 13)),
+                variable: Identifier { value: "second".to_string(), span: s(7, 13) },
                 value: Expression::Literal(Literal::new(2, s(17, 18))),
                 span: s(7, 18),
             }),
         ],
         span: s(0, 19),
+    }));
+
+    parse_test!(binary_op, ExprParser, "5+5" => Expression::Binary(BinaryExpression {
+        left: Box::new(Expression::Literal(Literal {
+            kind: LiteralKind::Integer(5),
+            span: s(0, 1),
+        })),
+        right: Box::new(Expression::Literal(Literal {
+            kind: LiteralKind::Integer(5),
+            span: s(2, 3),
+        })),
+        op: BinOp::Add,
+        span: s(0, 3),
     }));
 
     parse_test!(super_complex_expression, ExprParser, "5*5 + add(-(9**2), -34/pi)" =>
@@ -368,7 +421,7 @@ mod tests {
                         right: Box::new(Expression::Variable(Identifier {
                             value: String::from("pi"),
                             span: s(23, 25),
-                        })),
+                        }.into())),
                         op: BinOp::Divide,
                         span: s(19, 25),
                     })),
@@ -496,10 +549,13 @@ END_PROGRAM";
                 }),
                 Statement::RepeatLoop(RepeatLoop {
                     condition: Expression::Binary(BinaryExpression {
-                        left: Box::new(Expression::Variable(Identifier {
-                            value: String::from("i"),
-                            span: s(105, 106),
-                        })),
+                        left: Box::new(Expression::Variable(
+                            Identifier {
+                                value: String::from("i"),
+                                span: s(105, 106),
+                            }
+                            .into(),
+                        )),
                         right: Box::new(Expression::Literal(Literal {
                             kind: LiteralKind::Integer(10),
                             span: s(110, 112),
@@ -513,10 +569,13 @@ END_PROGRAM";
                             span: s(83, 84),
                         },
                         value: Expression::Binary(BinaryExpression {
-                            left: Box::new(Expression::Variable(Identifier {
-                                value: String::from("i"),
-                                span: s(88, 89),
-                            })),
+                            left: Box::new(Expression::Variable(
+                                Identifier {
+                                    value: String::from("i"),
+                                    span: s(88, 89),
+                                }
+                                .into(),
+                            )),
                             right: Box::new(Expression::Literal(Literal {
                                 kind: LiteralKind::Integer(1),
                                 span: s(92, 93),
@@ -534,4 +593,22 @@ END_PROGRAM";
     }
 
     parse_test!(trivial_program, ProgramParser, EXAMPLE_PROGRAM => example_program_parsed());
+
+    parse_test!(dotted_identifier, ExprParser, "x.y.z" => Expression::Variable(DottedIdentifier {
+        pieces: vec![
+            Identifier {
+                value: "x".to_string(),
+                span: s(0, 1),
+            },
+            Identifier {
+                value: "y".to_string(),
+                span: s(2, 3),
+            },
+            Identifier {
+                value: "z".to_string(),
+                span: s(4, 5),
+            },
+        ],
+        span: s(0, 5),
+    }));
 }
