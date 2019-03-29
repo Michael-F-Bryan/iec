@@ -11,6 +11,7 @@ match {
     r"(?i)do" => DO,
     r"(?i)end_for" => END_FOR,
     r"(?i)end_function" => END_FUNCTION,
+    r"(?i)end_if" => END_IF,
     r"(?i)end_program" => END_PROGRAM,
     r"(?i)end_repeat" => END_REPEAT,
     r"(?i)end_var" => END_VAR,
@@ -19,11 +20,13 @@ match {
     r"(?i)false" => FALSE,
     r"(?i)for" => FOR,
     r"(?i)function" => FUNCTION,
+    r"(?i)if" => IF,
     r"(?i)not" => NOT,
     r"(?i)or" => OR,
     r"(?i)program" => PROGRAM,
     r"(?i)repeat" => REPEAT,
     r"(?i)return" => RETURN,
+    r"(?i)then" => THEN,
     r"(?i)to" => TO,
     r"(?i)true" => TRUE,
     r"(?i)until" => UNTIL,
@@ -67,11 +70,16 @@ statement_with_semicolon: Statement = {
 };
 
 pub Stmt: Statement = {
-    <Assignment> => Statement::Assignment(<>),
-    <FunctionCall> => Statement::FunctionCall(<>),
+    <Assignment> => <>.into(),
+    <FunctionCall> => <>.into(),
     <IterationStatement> => <>,
+    <If> => <>.into(),
     <l:@L> EXIT <r:@R> => Statement::Exit(Exit { span: s(l, r) }),
     <l:@L> RETURN <r:@R> => Statement::Return(Return { span: s(l, r) }),
+};
+
+pub If: IfStatement = {
+    <l:@L> IF <condition:Expr> THEN <body:Statements> END_IF <r:@R> => IfStatement { condition, body, span: s(l, r) },
 };
 
 pub Ident: Identifier = {

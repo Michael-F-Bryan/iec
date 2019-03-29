@@ -53,7 +53,15 @@ sum_type::sum_type! {
         RepeatLoop,
         Exit,
         Return,
+        IfStatement,
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IfStatement {
+    pub condition: Expression,
+    pub body: Vec<Statement>,
+    pub span: ByteSpan,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -302,11 +310,12 @@ impl_ast_node!(
     FunctionBlock,
     Function,
     DottedIdentifier,
+    IfStatement,
 );
 impl_ast_node!(Item => Function | FunctionBlock | Program);
 impl_ast_node!(Expression => Literal | Binary | Unary | Variable | FunctionCall);
 impl_ast_node!(Statement => FunctionCall | Assignment | Return | ForLoop |
-    WhileLoop | RepeatLoop | Exit);
+    WhileLoop | RepeatLoop | Exit | IfStatement);
 impl_ast_node!(FunctionArg => Bare | Named);
 
 #[cfg(test)]
@@ -613,4 +622,12 @@ END_PROGRAM";
         ],
         span: s(0, 5),
     }));
+
+    parse_test!(if_statement, IfParser, "if true then return; end_if" => IfStatement {
+        condition: Expression::Literal(Literal{ kind: LiteralKind::Boolean(true), span: s(3, 7) }),
+        body: vec![
+            Statement::Return(Return { span: s(13, 19) }),
+        ],
+        span: s(0, 27),
+    });
 }
