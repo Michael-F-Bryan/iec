@@ -8,7 +8,7 @@ pub struct NodeId(u32);
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Program {
     pub name: String,
-    pub variables: Vec<Variable>,
+    pub variables: HashMap<NodeId, Variable>,
     pub blocks: HashMap<NodeId, Block>,
     pub entry_point: NodeId,
 }

@@ -12,6 +12,9 @@ macro_rules! defer {
     };
 }
 
+#[macro_use]
+pub mod macros;
+
 mod ast;
 mod utils;
 
