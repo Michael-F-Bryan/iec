@@ -21,7 +21,7 @@
 ///
 /// // programs can also have var blocks
 /// let program_2: Program = iec_syntax::quote!(program asd { var {}});
-/// assert!(program_2.var.is_some());
+/// assert_eq!(program_2.var_blocks.len(), 1);
 ///
 /// // statements are followed by a semicolon
 /// let assign: Statement = iec_syntax::quote!(meaning_of_life := 42;);
@@ -34,8 +34,8 @@ macro_rules! quote {
         $($tail:tt)*
     }) => {
         $crate::Program {
-            name: $crate::quote!($name),
-            var: Some($crate::quote!(var { $($vars) * })),
+            name: $crate::quote!(@IDENT $name),
+            var_blocks: vec![$crate::quote!(var { $($vars) * })],
             body: Vec::new(),
             span: Default::default(),
         }
@@ -44,8 +44,8 @@ macro_rules! quote {
         $($tail:tt)*
     }) => {
         $crate::Program {
-            name: $crate::quote!($name),
-            var: None,
+            name: $crate::quote!(@IDENT $name),
+            var_blocks: Vec::new(),
             body: Vec::new(),
             span: Default::default(),
         }
@@ -74,15 +74,24 @@ macro_rules! quote {
     };
     ($name:ident : $type:ident) => {
         $crate::Declaration {
-            ident: $crate::quote!($name),
-            ty: $crate::quote!($type),
+            ident: $crate::quote!(@IDENT $name),
+            ty: $crate::quote!(@IDENT $type),
             span: Default::default(),
         }
     };
-    ($ident:ident) => {
-        $crate::Identifier {
-            value: stringify!($ident).to_string(),
+    ($ident:ident $( . $rest:ident )*) => {
+        $crate::DottedIdentifier {
+            pieces: vec![
+                $crate::quote!(@IDENT $ident),
+                $($crate::quote!(@IDENT $rest)),*
+            ],
             span: Default::default(),
         }
-    }
+    };
+    (@IDENT $id:ident) => {
+        $crate::Identifier {
+            value: stringify!($id).to_string(),
+            span: Default::default(),
+        }
+    };
 }

@@ -1,5 +1,5 @@
 macro_rules! parse_file {
-    ($( $filename:ident),*) => {
+    ($( $filename:ident),* $(,)*) => {
         $(
             #[test]
             fn $filename() {
@@ -24,4 +24,9 @@ macro_rules! parse_file {
     };
 }
 
-parse_file!(hello_world, id_function, struct_decl, function_block);
+parse_file! {
+    hello_world,
+    id_function,
+    // struct_decl,
+    // function_block,
+}
