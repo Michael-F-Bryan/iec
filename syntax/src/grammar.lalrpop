@@ -93,7 +93,7 @@ LiteralKind: LiteralKind = {
 };
 
 pub Assignment: Assignment = {
-    <l:@L> <id:Ident> ":=" <value:Expr> <r:@R> => Assignment { variable: id, value, span: s(l, r) },
+    <l:@L> <id:DottedIdentifier> ":=" <value:Expr> <r:@R> => Assignment { variable: id, value, span: s(l, r) },
 };
 
 pub Expr: Expression = {
@@ -152,12 +152,12 @@ UnaryExpression: Expression = {
 PrimaryExpression: Expression = {
     "(" <Expr> ")" => <>,
     <Lit> => Expression::Literal(<>),
-    <Ident> => Expression::Variable(<>.into()),
+    <DottedIdentifier> => Expression::Variable(<>.into()),
     <FunctionCall> => Expression::FunctionCall(<>),
 };
 
 DottedIdentifier: DottedIdentifier = {
-    <l:@L> <first:Ident> <tail:("." <Ident>)+> <r:@R> => DottedIdentifier {
+    <l:@L> <first:Ident> <tail:("." <Ident>)*> <r:@R> => DottedIdentifier {
         pieces: ::std::iter::once(first).chain(tail).collect(),
         span: s(l, r),
     },

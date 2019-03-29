@@ -107,7 +107,7 @@ impl Declaration {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Assignment {
-    pub variable: Identifier,
+    pub variable: DottedIdentifier,
     pub value: Expression,
     pub span: ByteSpan,
 }
@@ -337,7 +337,7 @@ mod tests {
     });
 
     parse_test!(assign_literal, AssignmentParser, "meaning_of_life := 42" => Assignment {
-        variable: Identifier{ value: "meaning_of_life".to_string(), span: s(0, 15) },
+        variable: Identifier{ value: "meaning_of_life".to_string(), span: s(0, 15) }.into(),
         value: Expression::Literal(Literal {
             kind: LiteralKind::Integer(42),
             span: s(19, 21),
@@ -356,7 +356,7 @@ mod tests {
         args: vec![
             FunctionArg::Bare(Expression::Literal(Literal::new(1, s(4, 5)))),
             FunctionArg::Named(Assignment {
-                variable: Identifier { value: "second".to_string(), span: s(7, 13) },
+                variable: Identifier { value: "second".to_string(), span: s(7, 13) }.into(),
                 value: Expression::Literal(Literal::new(2, s(17, 18))),
                 span: s(7, 18),
             }),
@@ -540,7 +540,8 @@ END_PROGRAM";
                     variable: Identifier {
                         value: String::from("i"),
                         span: s(56, 57),
-                    },
+                    }
+                    .into(),
                     value: Expression::Literal(Literal {
                         kind: LiteralKind::Integer(0),
                         span: s(61, 62),
@@ -567,7 +568,8 @@ END_PROGRAM";
                         variable: Identifier {
                             value: String::from("i"),
                             span: s(83, 84),
-                        },
+                        }
+                        .into(),
                         value: Expression::Binary(BinaryExpression {
                             left: Box::new(Expression::Variable(
                                 Identifier {
