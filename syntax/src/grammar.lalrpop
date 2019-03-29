@@ -9,8 +9,10 @@ match {
     r"(?i)begin" => BEGIN,
     r"(?i)by" => BY,
     r"(?i)do" => DO,
+    r"(?i)else" => ELSE,
     r"(?i)end_for" => END_FOR,
     r"(?i)end_function" => END_FUNCTION,
+    r"(?i)end_function_block" => END_FUNCTION_BLOCK,
     r"(?i)end_if" => END_IF,
     r"(?i)end_program" => END_PROGRAM,
     r"(?i)end_repeat" => END_REPEAT,
@@ -20,6 +22,7 @@ match {
     r"(?i)false" => FALSE,
     r"(?i)for" => FOR,
     r"(?i)function" => FUNCTION,
+    r"(?i)function_block" => FUNCTION_BLOCK,
     r"(?i)if" => IF,
     r"(?i)not" => NOT,
     r"(?i)or" => OR,
@@ -31,6 +34,9 @@ match {
     r"(?i)true" => TRUE,
     r"(?i)until" => UNTIL,
     r"(?i)var" => VAR,
+    r"(?i)var_input" => VAR_INPUT,
+    r"(?i)var_output" => VAR_OUTPUT,
+    r"(?i)var_input_output" => VAR_INPUT_OUTPUT,
     r"(?i)while" => WHILE,
     r"(?i)xor" => XOR,
 } else {
@@ -45,17 +51,33 @@ pub File: File = {
 };
 
 Item: Item = {
-    <Program> => Item::Program(<>),
-    <Function> => Item::Function(<>),
+    <Program> => <>.into(),
+    <Function> => <>.into(),
+    <FunctionBlock> => <>.into(),
 };
 
 Function: Function = {
     <l:@L> FUNCTION <name:Ident> ":" <return_value:Ident> BEGIN
+     <var_blocks:VarBlock*>
      <body:Statements> 
      END_FUNCTION <r:@R> => 
     Function {
         name,
+        var_blocks,
         return_value,
+        body,
+        span: s(l, r),
+    },
+};
+
+FunctionBlock: FunctionBlock = {
+    <l:@L> FUNCTION_BLOCK <name:Ident>
+     <var_blocks:VarBlock*>
+     BEGIN
+     <body:Statements> 
+     END_FUNCTION_BLOCK <r:@R> => FunctionBlock {
+        name,
+        var_blocks,
         body,
         span: s(l, r),
     },
@@ -221,12 +243,15 @@ pub Block: VarBlock = {
 };
 
 VarBlock: VarBlock = {
- <l:@L> VAR <decls:(<Decl> ";")*> END_VAR <r:@R> => VarBlock { declarations: decls, span: s(l, r) },
+ <l:@L> VAR <decls:(<Decl> ";")*> END_VAR <r:@R> => VarBlock { kind: VarBlockKind::Local, declarations: decls, span: s(l, r) },
+ <l:@L> VAR_INPUT <decls:(<Decl> ";")*> END_VAR <r:@R> => VarBlock { kind: VarBlockKind::Input, declarations: decls, span: s(l, r) },
+ <l:@L> VAR_OUTPUT <decls:(<Decl> ";")*> END_VAR <r:@R> => VarBlock { kind: VarBlockKind::Output, declarations: decls, span: s(l, r) },
+ <l:@L> VAR_INPUT_OUTPUT <decls:(<Decl> ";")*> END_VAR <r:@R> => VarBlock { kind: VarBlockKind::InputOutput, declarations: decls, span: s(l, r) },
 };
 
 pub Program: Program = {
-    <l:@L> PROGRAM <name:Ident> <var:Block?> <body:Statements> END_PROGRAM <r:@R> =>
-        Program { name, var, body, span: s(l, r) }
+    <l:@L> PROGRAM <name:Ident> <var_blocks:Block*> <body:Statements> END_PROGRAM <r:@R> =>
+        Program { name, var_blocks, body, span: s(l, r) }
 };
 
 Comma<T>: Vec<T> = {

@@ -25,6 +25,7 @@ sum_type::sum_type! {
 pub struct Function {
     pub name: Identifier,
     pub return_value: Identifier,
+    pub var_blocks: Vec<VarBlock>,
     pub body: Vec<Statement>,
     pub span: ByteSpan,
 }
@@ -32,13 +33,15 @@ pub struct Function {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FunctionBlock {
     pub name: Identifier,
+    pub var_blocks: Vec<VarBlock>,
+    pub body: Vec<Statement>,
     pub span: ByteSpan,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Program {
     pub name: Identifier,
-    pub var: Option<VarBlock>,
+    pub var_blocks: Vec<VarBlock>,
     pub body: Vec<Statement>,
     pub span: ByteSpan,
 }
@@ -264,8 +267,17 @@ pub struct RepeatLoop {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VarBlock {
+    pub kind: VarBlockKind,
     pub declarations: Vec<Declaration>,
     pub span: ByteSpan,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub enum VarBlockKind {
+    Local,
+    Input,
+    Output,
+    InputOutput,
 }
 
 macro_rules! impl_ast_node {
@@ -497,6 +509,7 @@ mod tests {
     }));
 
     parse_test!(single_var_block, BlockParser, "var i: INT; end_var" => VarBlock {
+        kind: VarBlockKind::Local,
         declarations: vec![Declaration {
             ident: Identifier {
                 value: String::from("i"),
@@ -530,7 +543,8 @@ END_PROGRAM";
                 value: String::from("main"),
                 span: s(9, 13),
             },
-            var: Some(VarBlock {
+            var_blocks: vec![VarBlock {
+                kind: VarBlockKind::Local,
                 declarations: vec![Declaration {
                     ident: Identifier {
                         value: String::from("i"),
@@ -543,7 +557,7 @@ END_PROGRAM";
                     span: s(30, 37),
                 }],
                 span: s(18, 50),
-            }),
+            }],
             body: vec![
                 Statement::Assignment(Assignment {
                     variable: Identifier {

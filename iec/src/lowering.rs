@@ -86,8 +86,8 @@ impl<'diag> Analyser<'diag> {
         let mut variables = HashMap::new();
         let blocks = HashMap::new();
 
-        if let Some(vars) = original.var.as_ref() {
-            self.analyse_vars(vars, &mut variables);
+        for var_block in &original.var_blocks {
+            self.analyse_vars(var_block, &mut variables);
         }
 
         let dummy_node = self.ids.next_node();

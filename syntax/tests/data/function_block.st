@@ -1,18 +1,18 @@
 FUNCTION_BLOCK mqttRuntime
 
 VAR_INPUT
-    IN      :   BOOL;    //
-    RES     :   BOOL;    // manuell reset
+    IN      :   BOOL; 
+    RES     :   BOOL; 
 END_VAR
 
 VAR_OUTPUT
-    RTIME   :   TIME;   // maximal value is 24Days 
+    RTIME   :   TIME; 
 END_VAR
 
 VAR
     last    :   DINT;
     now     :   DINT;   
-    run     :   DINT;   // in secs
+    run     :   DINT; 
     FP_IN   :   BOOL;
 END_VAR
 
@@ -32,7 +32,6 @@ IF IN AND NOT RES THEN
     now := DWORD_TO_DINT(Unixtime());
     IF last = 0 THEN
         last := now;
-        GOTO Out;
     ELSE
         run := run + (now - last);
         last := now;
@@ -50,10 +49,10 @@ ELSIF NOT IN AND RES THEN
     last := 0;
 END_IF;
 
-IF run >= 2073600 THEN // avoid overflow of time typ 
+IF run >= 2073600 THEN 
     run := 0;
 END_IF;
 
-Out: RTIME := DINT_TO_TIME(run * 1000);
+RTIME := DINT_TO_TIME(run * 1000);
 
 END_FUNCTION_BLOCK

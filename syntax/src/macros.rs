@@ -52,6 +52,7 @@ macro_rules! quote {
     };
     (var { $($tail:tt)* }) => {
         $crate::VarBlock {
+            kind: $crate::VarBlockKind::Local,
             declarations: $crate::quote!($($tail)*),
             span: Default::default(),
         }
