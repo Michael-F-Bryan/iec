@@ -1,0 +1,24 @@
+language: rust
+sudo: false
+cache: cargo
+
+rust:
+  - stable
+  - nightly
+
+script: 
+  - cargo build --all --verbose
+  - cargo test --all --verbose
+
+before_deploy:
+  - cargo doc --all --verbose
+  - echo '<meta http-equiv="refresh" content="0; url=iec/index.html" /> ' > target/doc/index.html
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN 
+  keep_history: true
+  local_dir: target/doc
+  on:
+    branch: master

@@ -12,6 +12,7 @@ use crate::Diagnostics;
 pub trait Pass<'r> {
     type Context: ?Sized;
     type Storage: FromResources<'r>;
+    const Description: &'static str;
 
     /// Execute the pass.
     fn run(
