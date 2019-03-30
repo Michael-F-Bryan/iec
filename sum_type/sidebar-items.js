@@ -1,0 +1,1 @@
+initSidebarItems({"macro":[["defer","Execute an operation on each enum variant."],["sum_type","The entire point."]],"trait":[["SumType","Various methods for introspection and dynamic typing."]]});
