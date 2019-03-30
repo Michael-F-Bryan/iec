@@ -1,33 +1,9 @@
 use crate::hir::{
     CompilationUnit, Counter, NodeId, Program, Type, TypeId, Variable,
 };
-use codespan_reporting::{Diagnostic, Label, Severity};
+use crate::Diagnostics;
+use codespan_reporting::{Diagnostic, Label};
 use std::collections::HashMap;
-
-#[derive(Debug, Clone, Default)]
-pub struct Diagnostics(Vec<Diagnostic>);
-
-impl Diagnostics {
-    pub fn new() -> Diagnostics {
-        Diagnostics::default()
-    }
-
-    pub fn push(&mut self, diag: Diagnostic) {
-        self.0.push(diag);
-    }
-
-    fn has(&self, severity: Severity) -> bool {
-        self.0.iter().any(|diag| diag.severity >= severity)
-    }
-
-    pub fn has_errors(&self) -> bool {
-        self.has(Severity::Error)
-    }
-
-    pub fn diagnostics(&self) -> &[Diagnostic] {
-        &self.0
-    }
-}
 
 pub fn compile(
     program: &iec_syntax::Program,
@@ -154,6 +130,7 @@ impl<'diag> Analyser<'diag> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use codespan_reporting::Severity;
 
     fn program() -> iec_syntax::Program {
         "PROGRAM main VAR i: int; END_VAR END_PROGRAM"
