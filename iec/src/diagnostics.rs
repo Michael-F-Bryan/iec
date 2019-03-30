@@ -1,5 +1,6 @@
 use codespan_reporting::{Diagnostic, Severity};
 
+/// A collection of user diagnostics.
 #[derive(Debug, Clone, Default)]
 pub struct Diagnostics(Vec<Diagnostic>);
 

@@ -19,9 +19,22 @@
 mod diagnostics;
 pub mod ecs;
 pub mod hir;
-pub mod lowering;
 pub mod passes;
 
 pub use crate::diagnostics::Diagnostics;
+pub use crate::ecs::EntityId;
+pub use crate::hir::CompilationUnit;
 
-pub fn process(ast: &iec_syntax::File, diags: &mut Diagnostics) {}
+use crate::ecs::{EntityGenerator, Resources};
+
+/// Process the provided AST and execute semantic analysis.
+pub fn process(
+    _ast: &iec_syntax::File,
+    _diags: &mut Diagnostics,
+) -> CompilationUnit {
+    let mut resources = Resources::new();
+
+    resources.register_singleton(EntityGenerator::new());
+
+    unimplemented!()
+}

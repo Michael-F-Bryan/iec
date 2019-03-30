@@ -18,7 +18,7 @@ pub trait Component: TypeName + Any + Debug + 'static {}
 impl<C: TypeName + Any + Debug + 'static> Component for C {}
 
 /// A counter which generates atomically incrementing [`EntityId`]s.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, TypeName)]
 pub struct EntityGenerator {
     last_id: AtomicUsize,
 }
@@ -38,6 +38,16 @@ impl EntityGenerator {
 
 /// A resource container used to access the various components stored inside.
 ///
+/// There are two general categories of component which can be stored in a
+/// [`Resources`]. Most of the time you'll be using "normal" [`Component`]s,
+/// these are accessed with the usual [`Resources::get()`] and
+/// [`Resources::get_mut()`] methods and let you associate data with a specific
+/// [`EntityId`].
+///
+/// However there will be times when the usual [`EntityId`] -> [Component`]
+/// relation doesn't make sense. In this case you can register a "singleton
+/// component".
+///
 /// # Panics
 ///
 /// Most of the methods on [`Resources`] rely on a component being registered
@@ -46,6 +56,7 @@ impl EntityGenerator {
 #[derive(Default)]
 pub struct Resources {
     items: HashMap<TypeId, Box<Any>>,
+    singletons: HashMap<TypeId, Box<Any>>,
     vtables: HashMap<TypeId, ContainerVtable>,
 }
 
@@ -70,6 +81,17 @@ impl Resources {
             .insert(type_id, ContainerVtable::for_component_container::<C>());
     }
 
+    pub fn register_singleton<C>(&mut self, value: C)
+    where
+        C: Component,
+    {
+        let type_id = TypeId::of::<C>();
+        self.singletons
+            .insert(type_id, Box::new(RefCell::new(value)));
+        self.vtables
+            .insert(type_id, ContainerVtable::for_singleton::<C>());
+    }
+
     fn lookup<C: Component>(&self) -> &RefCell<Container<C>> {
         let type_id = TypeId::of::<C>();
 
@@ -79,6 +101,23 @@ impl Resources {
         };
 
         match container.downcast_ref::<RefCell<Container<C>>>() {
+            Some(c) => c,
+            None => unreachable!(
+                "Something went really wrong when registering \"{}\"",
+                C::type_name()
+            ),
+        }
+    }
+
+    fn lookup_singleton<C: Component>(&self) -> &RefCell<C> {
+        let type_id = TypeId::of::<C>();
+
+        let container = match self.singletons.get(&type_id) {
+            Some(c) => c,
+            None => panic!("Unable to find the \"{}\" singleton, did you forget to register it?)", C::type_name()),
+        };
+
+        match container.downcast_ref::<RefCell<C>>() {
             Some(c) => c,
             None => unreachable!(
                 "Something went really wrong when registering \"{}\"",
@@ -97,10 +136,25 @@ impl Resources {
         self.lookup::<C>().borrow_mut()
     }
 
+    /// Look up a singleton component.
+    pub fn get_singleton<C: Component>(&self) -> Ref<'_, C> {
+        self.lookup_singleton::<C>().borrow()
+    }
+
+    /// Get a mutable reference to a singleton component.
+    pub fn get_singleton_mut<C: Component>(&self) -> RefMut<'_, C> {
+        self.lookup_singleton::<C>().borrow_mut()
+    }
+
     pub fn component_names(&self) -> impl Iterator<Item = &str> {
         self.vtables
             .values()
             .map(|vtable| vtable.component_name.as_str())
+    }
+
+    pub fn is_registered<C: Component>(&self) -> bool {
+        let type_id = TypeId::of::<C>();
+        self.vtables.contains_key(&type_id)
     }
 }
 
@@ -194,6 +248,23 @@ impl ContainerVtable {
         }
     }
 
+    fn for_singleton<C>() -> ContainerVtable
+    where
+        C: Component,
+    {
+        ContainerVtable {
+            debug: |c, f| {
+                c.downcast_ref::<RefCell<C>>()
+                    .expect("Incorrect singleton type")
+                    .borrow()
+                    .fmt(f)
+            },
+            container_type_id: TypeId::of::<RefCell<C>>(),
+            component_type_id: TypeId::of::<C>(),
+            component_name: C::type_name(),
+        }
+    }
+
     fn debug<'a>(&self, container: &'a dyn Any) -> impl Debug + 'a {
         debug_assert_eq!(
             container.type_id(),
@@ -265,7 +336,7 @@ mod tests {
         let mut res = Resources::default();
         res.register::<RandomComponent>();
 
-        let got = res.get::<RandomComponent>();
+        let _got = res.get::<RandomComponent>();
 
         assert_eq!(res.items.len(), 1);
         assert_eq!(res.vtables.len(), 1);
@@ -282,5 +353,30 @@ mod tests {
 
         let key = format!("\"{}\"", RandomComponent::type_name());
         assert!(got.contains(&key));
+    }
+
+    #[test]
+    fn use_a_singleton_component() {
+        let mut res = Resources::default();
+        res.register_singleton(RandomComponent(42));
+
+        assert!(res.items.is_empty());
+        assert_eq!(res.vtables.len(), 1);
+        assert_eq!(res.singletons.len(), 1);
+
+        {
+            let got = res.get_singleton::<RandomComponent>();
+            assert_eq!(got.0, 42);
+        }
+
+        {
+            let mut got = res.get_singleton_mut::<RandomComponent>();
+            got.0 = 7;
+        }
+
+        {
+            let got = res.get_singleton::<RandomComponent>();
+            assert_eq!(got.0, 7);
+        }
     }
 }

@@ -2,9 +2,13 @@
 //! passes, where each pass does some processing on the provided input before
 //! updating the world.
 
-use crate::ecs::{Component, Container, Resources};
+mod from_resources;
+
+pub use self::from_resources::{
+    FromResources, Read, ReadWrite, Singleton, SingletonMut,
+};
+
 use crate::Diagnostics;
-use std::cell::{Ref, RefMut};
 
 /// The "system" part of your typical Entity-Component-System application.
 ///
@@ -21,45 +25,3 @@ pub trait Pass<'r> {
         storage: Self::Storage,
     );
 }
-
-/// An adaptor trait for retrieving a particular [`Component`] container from
-/// the world.
-///
-/// This enables nice things like passing a tuple of [`Component`]s to a
-/// [`Pass`].
-pub trait FromResources<'r>: Sized {
-    fn from_resources(r: &'r Resources) -> Self;
-}
-
-impl<'r, C: Component> FromResources<'r> for Ref<'r, Container<C>> {
-    fn from_resources(r: &'r Resources) -> Self {
-        r.get()
-    }
-}
-
-impl<'r, C: Component> FromResources<'r> for RefMut<'r, Container<C>> {
-    fn from_resources(r: &'r Resources) -> Self {
-        r.get_mut()
-    }
-}
-
-macro_rules! tuple_from_resource {
-    ($($letter:ident),*) => {
-        impl<'r, $( $letter ),* > FromResources<'r> for ( $( $letter ),* )
-        where
-            $(
-                $letter : FromResources<'r>,
-            )*
-        {
-            fn from_resources(r: &'r Resources) -> Self {
-                ( $( $letter::from_resources(r) ),* )
-            }
-        }
-    };
-}
-
-tuple_from_resource!(A, B);
-tuple_from_resource!(A, B, C);
-tuple_from_resource!(A, B, C, D);
-tuple_from_resource!(A, B, C, D, E);
-tuple_from_resource!(A, B, C, D, E, F);
