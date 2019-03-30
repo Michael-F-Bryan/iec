@@ -3,7 +3,8 @@ sudo: false
 cache: cargo
 
 rust:
-  - stable
+  # Any::type_id() requires 1.24, which is currently in beta
+  # - stable
   - nightly
 
 script: 
