@@ -2,12 +2,7 @@
 //! passes, where each pass does some processing on the provided input before
 //! updating the world.
 
-mod from_resources;
-
-pub use self::from_resources::{
-    FromResources, Read, ReadWrite, Singleton, SingletonMut,
-};
-
+use crate::ecs::FromResources;
 use crate::Diagnostics;
 
 /// The "system" part of your typical Entity-Component-System application.
