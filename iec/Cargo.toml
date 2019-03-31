@@ -6,11 +6,10 @@ edition = "2018"
 
 [dependencies]
 iec_syntax = { path = "../syntax" }
-serde_derive = "1.0.89"
-serde = "1.0.89"
+serde_derive = "1.0"
+serde = "1.0"
 codespan-reporting = "0.2.1"
 codespan = "0.2.1"
-cranelift = "0.30.0"
-typename = "0.1.0"
+typename = "0.1"
 heapsize_derive = "0.1.4"
 heapsize = "0.4.2"
