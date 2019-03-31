@@ -24,6 +24,7 @@ sourcesIndex["regex_syntax"] = {"name":"","dirs":[{"name":"ast","dirs":[],"files
 sourcesIndex["rustc_demangle"] = {"name":"","dirs":[],"files":["lib.rs"]};
 sourcesIndex["serde"] = {"name":"","dirs":[{"name":"de","dirs":[],"files":["from_primitive.rs","ignored_any.rs","impls.rs","mod.rs","utf8.rs","value.rs"]},{"name":"private","dirs":[],"files":["de.rs","macros.rs","mod.rs","ser.rs"]},{"name":"ser","dirs":[],"files":["impls.rs","impossible.rs","mod.rs"]}],"files":["export.rs","integer128.rs","lib.rs","macros.rs"]};
 sourcesIndex["serde_derive"] = {"name":"","dirs":[{"name":"internals","dirs":[],"files":["ast.rs","attr.rs","case.rs","check.rs","ctxt.rs","mod.rs"]}],"files":["bound.rs","de.rs","dummy.rs","fragment.rs","lib.rs","pretend.rs","ser.rs","try.rs"]};
+sourcesIndex["slog"] = {"name":"","dirs":[{"name":"key","dirs":[],"files":["mod.rs","static.rs"]}],"files":["lib.rs"]};
 sourcesIndex["sum_type"] = {"name":"","dirs":[],"files":["lib.rs"]};
 sourcesIndex["syn"] = {"name":"","dirs":[{"name":"gen","dirs":[],"files":["fold.rs","gen_helper.rs","visit.rs"]}],"files":["attr.rs","buffer.rs","data.rs","derive.rs","error.rs","export.rs","expr.rs","ext.rs","file.rs","generics.rs","group.rs","ident.rs","item.rs","keyword.rs","lib.rs","lifetime.rs","lit.rs","lookahead.rs","mac.rs","macros.rs","op.rs","parse.rs","parse_macro_input.rs","parse_quote.rs","path.rs","print.rs","punctuated.rs","span.rs","spanned.rs","thread.rs","token.rs","tt.rs","ty.rs"]};
 sourcesIndex["synom"] = {"name":"","dirs":[],"files":["helper.rs","lib.rs","space.rs"]};

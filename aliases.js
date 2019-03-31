@@ -24,6 +24,7 @@ ALIASES["regex_syntax"] = {};
 ALIASES["rustc_demangle"] = {};
 ALIASES["serde"] = {};
 ALIASES["serde_derive"] = {};
+ALIASES["slog"] = {};
 ALIASES["sum_type"] = {};
 ALIASES["syn"] = {};
 ALIASES["synom"] = {};
