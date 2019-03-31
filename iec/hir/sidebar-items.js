@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["CompilationUnit",""]]});
+initSidebarItems({"struct":[["CompilationUnit",""],["Function",""],["FunctionBlock",""],["Program",""]]});
