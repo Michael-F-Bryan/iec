@@ -267,7 +267,7 @@ fn heap_size_of_any(
 
 /// A fancy lookup table mapping for associating a [`Component`] with a
 /// particular [`EntityId`].
-#[derive(Default, Clone, TypeName)]
+#[derive(Clone, TypeName)]
 pub struct Container<C: Component> {
     counter: Rc<EntityGenerator>,
     items: HashMap<EntityId, C>,
@@ -323,6 +323,15 @@ impl<C: Component> Container<C> {
 impl<C: Component> Debug for Container<C> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_map().entries(self.items.iter()).finish()
+    }
+}
+
+impl<C: Component> Default for Container<C> {
+    fn default() -> Container<C> {
+        Container {
+            counter: Default::default(),
+            items: Default::default(),
+        }
     }
 }
 

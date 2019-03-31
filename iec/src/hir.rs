@@ -11,6 +11,7 @@ pub struct CompilationUnit {
 #[derive(Debug, Clone, PartialEq, TypeName, HeapSizeOf)]
 pub struct Program {
     pub name: String,
+    pub variables: Vec<EntityId>,
 }
 
 #[derive(Debug, Clone, PartialEq, TypeName, HeapSizeOf)]
@@ -33,6 +34,7 @@ pub struct Type {
 )]
 pub struct Variable {
     pub parent: Symbol,
+    pub ty: EntityId,
     pub name: String,
 }
 

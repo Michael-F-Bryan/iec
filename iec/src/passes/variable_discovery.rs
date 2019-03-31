@@ -1,7 +1,7 @@
 use super::symbol_table::SymbolTable;
 use super::{Pass, PassContext};
 use crate::ecs::{Container, EntityId, ReadWrite, Singleton};
-use crate::hir::{Symbol, Variable};
+use crate::hir::{Program, Symbol, Variable};
 use crate::Diagnostics;
 use codespan_reporting::{Diagnostic, Label};
 use iec_syntax::Item;
@@ -11,11 +11,15 @@ pub enum VariableDiscovery {}
 
 impl<'r> Pass<'r> for VariableDiscovery {
     type Arg = iec_syntax::File;
-    type Storage = (Singleton<'r, SymbolTable>, ReadWrite<'r, Variable>);
+    type Storage = (
+        Singleton<'r, SymbolTable>,
+        ReadWrite<'r, Variable>,
+        ReadWrite<'r, Program>,
+    );
     const DESCRIPTION: &'static str = "Resolve variable declarations in each program, function, or function block";
 
     fn run(args: &Self::Arg, ctx: PassContext<'r>, storage: Self::Storage) {
-        let (symbol_table, mut variables) = storage;
+        let (symbol_table, mut variables, mut programs) = storage;
 
         for item in &args.items {
             let (var_blocks, name) = match item {
@@ -26,18 +30,30 @@ impl<'r> Pass<'r> for VariableDiscovery {
             let symbol = symbol_table.get(name)
                 .expect("We should have found all symbols when constructing the symbol table");
 
-            let got = resolve_variables(
+            let variable_ids = resolve_variables(
                 symbol,
+                &symbol_table,
                 var_blocks,
                 &mut variables,
                 ctx.diags,
             );
+
+            match symbol {
+                Symbol::Program(p) => {
+                    let p = programs.get_mut(p)
+                        .expect("The program should have been added during symbol table discovery");
+                    p.variables = variable_ids;
+                }
+                Symbol::Type(_) => unreachable!(),
+                _ => unimplemented!(),
+            }
         }
     }
 }
 
 fn resolve_variables(
     parent_scope: Symbol,
+    symbol_table: &SymbolTable,
     blocks: &[iec_syntax::VarBlock],
     variables: &mut Container<Variable>,
     diags: &mut Diagnostics,
@@ -66,9 +82,30 @@ fn resolve_variables(
                 continue;
             }
 
+            let ty = symbol_table.get(&decl.ty.value);
+
+            let type_id = match ty {
+                Some(Symbol::Type(id)) => id,
+                Some(_) => {
+                    diags.push(
+                        Diagnostic::new_error("Expected the name of a type")
+                            .with_label(Label::new_primary(decl.ty.span)),
+                    );
+                    continue;
+                }
+                None => {
+                    diags.push(
+                        Diagnostic::new_error("Unknown type")
+                            .with_label(Label::new_primary(decl.ty.span)),
+                    );
+                    continue;
+                }
+            };
+
             names.insert(to_lower, decl.ident.span);
             let id = variables.insert(Variable {
                 parent: parent_scope,
+                ty: type_id,
                 name: name.clone(),
             });
             ids.push(id);
@@ -83,5 +120,71 @@ mod tests {
     use super::*;
 
     #[test]
-    fn discover_some_variables() {}
+    fn discover_some_variables() {
+        let block = iec_syntax::quote!(var { x: int; });
+        let mut variables = Container::default();
+        let mut diags = Diagnostics::new();
+        let mut symbols = SymbolTable::default();
+
+        symbols.insert("int", Symbol::Type(EntityId::default()));
+
+        let got = resolve_variables(
+            Symbol::Function(EntityId::default()),
+            &symbols,
+            &[block],
+            &mut variables,
+            &mut diags,
+        );
+
+        assert_eq!(diags.len(), 0);
+        assert_eq!(variables.len(), 1);
+        assert_eq!(got.len(), 1);
+
+        let (id, var) = variables.iter().next().unwrap();
+
+        assert!(got.contains(&id));
+        assert_eq!(var.name, "x");
+    }
+
+    #[test]
+    fn duplicate_variable_declarations() {
+        let block = iec_syntax::quote!(var { x: int; X: int; });
+        let mut variables = Container::default();
+        let mut diags = Diagnostics::new();
+        let mut symbols = SymbolTable::default();
+        symbols.insert("int", Symbol::Type(EntityId::default()));
+
+        let got = resolve_variables(
+            Symbol::Function(EntityId::default()),
+            &symbols,
+            &[block],
+            &mut variables,
+            &mut diags,
+        );
+
+        assert!(diags.has_errors());
+        assert_eq!(got.len(), 1);
+        assert_eq!(variables.len(), 1);
+    }
+
+    #[test]
+    fn unknown_type() {
+        let block = iec_syntax::quote!(var { x: int; y: string; });
+        let mut variables = Container::default();
+        let mut diags = Diagnostics::new();
+        let symbols = SymbolTable::default();
+
+        let got = resolve_variables(
+            Symbol::Function(EntityId::default()),
+            &symbols,
+            &[block],
+            &mut variables,
+            &mut diags,
+        );
+
+        assert!(diags.has_errors());
+        assert_eq!(diags.len(), 2);
+        assert!(got.is_empty());
+        assert!(variables.is_empty());
+    }
 }

@@ -1,5 +1,5 @@
 use super::{Pass, PassContext};
-use crate::ecs::{Container, EntityId, ReadWrite, SingletonMut};
+use crate::ecs::{Container, ReadWrite, SingletonMut};
 use crate::hir::{Function, FunctionBlock, Program, Symbol};
 use crate::Diagnostics;
 use codespan_reporting::{Diagnostic, Label};
@@ -119,6 +119,7 @@ fn register_program(
 
     let program = Program {
         name: p.name.value.clone(),
+        variables: Vec::new(),
     };
     let program_id = programs.insert(program);
     symbol_table.insert(&p.name.value, Symbol::Program(program_id));
