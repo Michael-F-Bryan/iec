@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["process","Process the provided AST and execute semantic analysis."],["run_pass",""]],"struct":[["PassContext",""],["SymbolTableResolution",""]],"trait":[["Pass","The \"system\" part of your typical Entity-Component-System application."]]});
+initSidebarItems({"fn":[["process","Process the provided AST and execute semantic analysis."],["run_pass",""]],"mod":[["symbol_table",""]],"struct":[["PassContext","Contextual information given to each pass."]],"trait":[["Pass","The \"system\" part of your typical Entity-Component-System application."]]});

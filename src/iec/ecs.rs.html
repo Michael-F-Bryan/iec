@@ -661,6 +661,41 @@
 <span id="661">661</span>
 <span id="662">662</span>
 <span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Super simple ECS-style building blocks, tailored for managing the various</span>
 <span class="doccomment">//! side-tables and data structures generated during the compilation process.</span>
@@ -676,6 +711,10 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::{<span class="ident">AtomicUsize</span>, <span class="ident">Ordering</span>};
 <span class="kw">use</span> <span class="ident">typename</span>::<span class="ident">TypeName</span>;
 
+<span class="doccomment">/// An opaque ID used to represent an entity.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// The normal method of creating an [`EntityId`] is to add it to a</span>
+<span class="doccomment">/// [`Container`] with [`Container::insert()`].</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Debug</span>,
     <span class="ident">Default</span>,
@@ -743,10 +782,12 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// There is no way to &quot;unregister&quot; a component after it has been</span>
     <span class="doccomment">/// registered.</span>
-    <span class="kw">fn</span> <span class="ident">register</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
     <span class="kw">where</span>
         <span class="ident">C</span>: <span class="ident">Component</span>,
     {
+        <span class="self">self</span>.<span class="ident">assert_not_already_registered</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>();
+
         <span class="kw">let</span> <span class="ident">type_id</span> <span class="op">=</span> <span class="ident">TypeId</span>::<span class="ident">of</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>();
         <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">Rc</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">counter</span>);
         <span class="kw">let</span> <span class="ident">container</span> <span class="op">=</span> <span class="ident">Container</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>::<span class="ident">new</span>(<span class="ident">ids</span>);
@@ -757,15 +798,32 @@
             .<span class="ident">insert</span>(<span class="ident">type_id</span>, <span class="ident">ContainerVtable</span>::<span class="ident">for_component_container</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>());
     }
 
-    <span class="kw">fn</span> <span class="ident">register_singleton</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
+    <span class="doccomment">/// Register a singleton component.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register_singleton</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
     <span class="kw">where</span>
         <span class="ident">C</span>: <span class="ident">Component</span> <span class="op">+</span> <span class="ident">Default</span>,
     {
+        <span class="self">self</span>.<span class="ident">assert_not_already_registered</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>();
+
         <span class="kw">let</span> <span class="ident">type_id</span> <span class="op">=</span> <span class="ident">TypeId</span>::<span class="ident">of</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>();
         <span class="self">self</span>.<span class="ident">singletons</span>
             .<span class="ident">insert</span>(<span class="ident">type_id</span>, <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">C</span>::<span class="ident">default</span>())));
         <span class="self">self</span>.<span class="ident">vtables</span>
             .<span class="ident">insert</span>(<span class="ident">type_id</span>, <span class="ident">ContainerVtable</span>::<span class="ident">for_singleton</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>());
+    }
+
+    <span class="kw">fn</span> <span class="ident">assert_not_already_registered</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">Component</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let</span> <span class="ident">type_id</span> <span class="op">=</span> <span class="ident">TypeId</span>::<span class="ident">of</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>();
+        <span class="macro">assert</span><span class="macro">!</span>(
+            <span class="op">!</span><span class="self">self</span>.<span class="ident">items</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">type_id</span>),
+            <span class="string">&quot;\&quot;{}\&quot; is already registered as a normal component&quot;</span>,
+            <span class="ident">C</span>::<span class="ident">type_name</span>()
+        );
+        <span class="macro">assert</span><span class="macro">!</span>(
+            <span class="op">!</span><span class="self">self</span>.<span class="ident">singletons</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">type_id</span>),
+            <span class="string">&quot;\&quot;{}\&quot; is already registered as a singleton component&quot;</span>,
+            <span class="ident">C</span>::<span class="ident">type_name</span>()
+        );
     }
 
     <span class="kw">fn</span> <span class="ident">ensure_registered</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
@@ -907,8 +965,8 @@
     <span class="ident">overhead</span> <span class="op">+</span> <span class="ident">item_sizes</span>
 }
 
-<span class="doccomment">/// A fancy lookup table mapping [`Component`]s to their correspondinng</span>
-<span class="doccomment">/// [`EntityId`].</span>
+<span class="doccomment">/// A fancy lookup table mapping for associating a [`Component`] with a</span>
+<span class="doccomment">/// particular [`EntityId`].</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">TypeName</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Container</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">Component</span><span class="op">&gt;</span> {
     <span class="ident">counter</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">EntityGenerator</span><span class="op">&gt;</span>,
@@ -931,18 +989,22 @@
         <span class="self">self</span>.<span class="ident">items</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>)
     }
 
+    <span class="doccomment">/// Add a component to the [`Container`], returning the [`EntityId`] it was</span>
+    <span class="doccomment">/// given.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">item</span>: <span class="ident">C</span>) <span class="op">-&gt;</span> <span class="ident">EntityId</span> {
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">counter</span>.<span class="ident">next_id</span>();
         <span class="self">self</span>.<span class="ident">items</span>.<span class="ident">insert</span>(<span class="ident">id</span>, <span class="ident">item</span>);
         <span class="ident">id</span>
     }
 
+    <span class="doccomment">/// Iterate over all the components in this [`Container`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter</span><span class="op">&lt;</span><span class="lifetime">&#39;this</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;this</span> <span class="self">self</span>,
     ) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">EntityId</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;this</span> <span class="ident">C</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;this</span> {
         <span class="self">self</span>.<span class="ident">items</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>, <span class="ident">c</span>)<span class="op">|</span> (<span class="ident">id</span>, <span class="ident">c</span>))
     }
 
+    <span class="doccomment">/// Mutably iterate over all the components in this [`Container`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;this</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;this</span> <span class="kw-2">mut</span> <span class="self">self</span>,
     ) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">EntityId</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;this</span> <span class="kw-2">mut</span> <span class="ident">C</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;this</span> {
@@ -1323,6 +1385,14 @@
             <span class="kw">let</span> <span class="ident">got</span> <span class="op">=</span> <span class="ident">res</span>.<span class="ident">get_singleton</span>::<span class="op">&lt;</span><span class="ident">RandomComponent</span><span class="op">&gt;</span>();
             <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">got</span>.<span class="number">0</span>, <span class="number">7</span>);
         }
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="attribute">#[<span class="ident">should_panic</span>]</span>
+    <span class="kw">fn</span> <span class="ident">you_cant_register_twice</span>() {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Resources</span>::<span class="ident">default</span>();
+        <span class="ident">res</span>.<span class="ident">register</span>::<span class="op">&lt;</span><span class="ident">RandomComponent</span><span class="op">&gt;</span>();
+        <span class="ident">res</span>.<span class="ident">register_singleton</span>::<span class="op">&lt;</span><span class="ident">RandomComponent</span><span class="op">&gt;</span>();
     }
 }
 </pre></div>

@@ -53,12 +53,13 @@
 <span id="53">53</span>
 <span id="54">54</span>
 <span id="55">55</span>
+<span id="56">56</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The internals for the `iec` compiler can be thought of as a series of</span>
 <span class="doccomment">//! passes, where each pass does some processing on the provided input before</span>
 <span class="doccomment">//! updating the world.</span>
 
-<span class="kw">mod</span> <span class="ident">symbol_table</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">symbol_table</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">symbol_table</span>::<span class="ident">SymbolTableResolution</span>;
 
@@ -67,6 +68,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">hir</span>::<span class="ident">CompilationUnit</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Diagnostics</span>;
 
+<span class="doccomment">/// Contextual information given to each pass.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PassContext</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">diags</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">Diagnostics</span>,
