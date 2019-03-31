@@ -207,26 +207,29 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Pass</span>, <span class="ident">PassContext</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ecs</span>::{<span class="ident">Container</span>, <span class="ident">EntityId</span>, <span class="ident">ReadWrite</span>, <span class="ident">SingletonMut</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">hir</span>::{<span class="ident">Function</span>, <span class="ident">FunctionBlock</span>, <span class="ident">Program</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">hir</span>::{<span class="ident">Function</span>, <span class="ident">FunctionBlock</span>, <span class="ident">Program</span>, <span class="ident">Symbol</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Diagnostics</span>;
 <span class="kw">use</span> <span class="ident">codespan_reporting</span>::{<span class="ident">Diagnostic</span>, <span class="ident">Label</span>};
 <span class="kw">use</span> <span class="ident">heapsize_derive</span>::<span class="ident">HeapSizeOf</span>;
 <span class="kw">use</span> <span class="ident">iec_syntax</span>::<span class="ident">Item</span>;
+<span class="kw">use</span> <span class="ident">serde_derive</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 <span class="kw">use</span> <span class="ident">typename</span>::<span class="ident">TypeName</span>;
 
 <span class="doccomment">/// A cache for looking up a component based on its identifier.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">TypeName</span>, <span class="ident">HeapSizeOf</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>,
+    <span class="ident">Default</span>,
+    <span class="ident">Clone</span>,
+    <span class="ident">PartialEq</span>,
+    <span class="ident">TypeName</span>,
+    <span class="ident">HeapSizeOf</span>,
+    <span class="ident">Serialize</span>,
+    <span class="ident">Deserialize</span>,
+)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SymbolTable</span>(<span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Symbol</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">SymbolTable</span> {
@@ -260,23 +263,6 @@
                         .<span class="ident">with_message</span>(<span class="string">&quot;Duplicate declared here&quot;</span>),
                 ),
             )
-        }
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">TypeName</span>, <span class="ident">HeapSizeOf</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Symbol</span> {
-    <span class="ident">Program</span>(<span class="ident">EntityId</span>),
-    <span class="ident">Function</span>(<span class="ident">EntityId</span>),
-    <span class="ident">FunctionBlock</span>(<span class="ident">EntityId</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Symbol</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">EntityId</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">Symbol</span>) <span class="op">-&gt;</span> <span class="ident">EntityId</span> {
-        <span class="kw">match</span> <span class="ident">s</span> {
-            <span class="ident">Symbol</span>::<span class="ident">Program</span>(<span class="ident">id</span>)
-            <span class="op">|</span> <span class="ident">Symbol</span>::<span class="ident">Function</span>(<span class="ident">id</span>)
-            <span class="op">|</span> <span class="ident">Symbol</span>::<span class="ident">FunctionBlock</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="ident">id</span>,
         }
     }
 }

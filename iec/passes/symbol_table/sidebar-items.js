@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Symbol",""],["SymbolTableResolution",""]],"struct":[["SymbolTable","A cache for looking up a component based on its identifier."]]});
+initSidebarItems({"enum":[["SymbolTableResolution",""]],"struct":[["SymbolTable","A cache for looking up a component based on its identifier."]]});
