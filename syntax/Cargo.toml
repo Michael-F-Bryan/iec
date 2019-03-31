@@ -10,10 +10,12 @@ readme = "../README.md"
 [dependencies]
 regex = "1"
 lalrpop-util = "0.16"
-codespan = { version = "0.2.1", features = ["serialization"] }
+codespan = { version = "0.2.1", features = ["serialization", "memory_usage"] }
 serde = "1.0"
 serde_derive = "1.0"
 sum_type = "0.1.1"
+heapsize_derive = "0.1.4"
+heapsize = "0.4.2"
 
 [build-dependencies]
 lalrpop = "0.16"

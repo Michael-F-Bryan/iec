@@ -1,19 +1,21 @@
 use codespan::ByteSpan;
+use heapsize::HeapSizeOf;
+use heapsize_derive::HeapSizeOf;
 use serde_derive::{Deserialize, Serialize};
 use std::any::Any;
 
-pub trait AstNode: Any {
+pub trait AstNode: Any + HeapSizeOf {
     fn span(&self) -> ByteSpan;
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct File {
     pub items: Vec<Item>,
     pub span: ByteSpan,
 }
 
 sum_type::sum_type! {
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
     pub enum Item {
         Program,
         Function,
@@ -21,7 +23,7 @@ sum_type::sum_type! {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Function {
     pub name: Identifier,
     pub return_value: Identifier,
@@ -30,7 +32,7 @@ pub struct Function {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct FunctionBlock {
     pub name: Identifier,
     pub var_blocks: Vec<VarBlock>,
@@ -38,7 +40,7 @@ pub struct FunctionBlock {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Program {
     pub name: Identifier,
     pub var_blocks: Vec<VarBlock>,
@@ -47,7 +49,7 @@ pub struct Program {
 }
 
 sum_type::sum_type! {
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
     pub enum Statement {
         Assignment,
         FunctionCall,
@@ -60,30 +62,30 @@ sum_type::sum_type! {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct IfStatement {
     pub condition: Expression,
     pub body: Vec<Statement>,
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Exit {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Return {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Identifier {
     pub value: String,
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct DottedIdentifier {
     pub pieces: Vec<Identifier>,
     pub span: ByteSpan,
@@ -99,7 +101,7 @@ impl From<Identifier> for DottedIdentifier {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Declaration {
     pub ident: Identifier,
     pub ty: Identifier,
@@ -116,7 +118,7 @@ impl Declaration {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Assignment {
     pub variable: DottedIdentifier,
     pub value: Expression,
@@ -124,7 +126,7 @@ pub struct Assignment {
 }
 
 sum_type::sum_type! {
-    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
     pub enum Expression {
         Literal(Literal),
         Variable(DottedIdentifier),
@@ -134,7 +136,7 @@ sum_type::sum_type! {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct BinaryExpression {
     pub left: Box<Expression>,
     pub right: Box<Expression>,
@@ -142,7 +144,7 @@ pub struct BinaryExpression {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub enum BinOp {
     Add,
     Subtract,
@@ -162,20 +164,20 @@ pub enum BinOp {
     Exponent,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct UnaryExpression {
     pub value: Box<Expression>,
     pub op: UnaryOp,
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub enum UnaryOp {
     Not,
     Negate,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct Literal {
     pub kind: LiteralKind,
     pub span: ByteSpan,
@@ -190,7 +192,7 @@ impl Literal {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub enum LiteralKind {
     Boolean(bool),
     Integer(i64),
@@ -228,20 +230,20 @@ impl<'a> From<&'a str> for LiteralKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct FunctionCall {
     pub name: Identifier,
     pub args: Vec<FunctionArg>,
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub enum FunctionArg {
     Bare(Expression),
     Named(Assignment),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct ForLoop {
     pub variable: Identifier,
     pub start: Expression,
@@ -251,28 +253,28 @@ pub struct ForLoop {
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct WhileLoop {
     pub condition: Expression,
     pub body: Vec<Statement>,
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct RepeatLoop {
     pub condition: Expression,
     pub body: Vec<Statement>,
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub struct VarBlock {
     pub kind: VarBlockKind,
     pub declarations: Vec<Declaration>,
     pub span: ByteSpan,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, HeapSizeOf)]
 pub enum VarBlockKind {
     Local,
     Input,

@@ -1,0 +1,25 @@
+[package]
+name = "iec-runner"
+version = "0.1.0"
+authors = ["Michael Bryan <michaelfbryan@gmail.com>"]
+edition = "2018"
+
+[[bin]]
+name = "iecc"
+path = "src/main.rs"
+
+[dependencies]
+slog-async = "2.3.0"
+slog-term = "2.4.0"
+slog = "2.4.1"
+structopt = "0.2.15"
+iec = { path = "../iec" }
+iec_syntax = { path = "../syntax" }
+slog_derive = "0.1.1"
+codespan = "0.2.1"
+codespan-reporting = "0.2.1"
+failure = "0.1.5"
+failure_derive = "0.1.5"
+lalrpop-util = "0.16.3"
+heapsize = "0.4.2"
+chrono = "0.4.6"

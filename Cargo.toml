@@ -1,2 +1,2 @@
 [workspace]
-members = ["syntax", "iec"]
+members = ["syntax", "iec", "runner"]

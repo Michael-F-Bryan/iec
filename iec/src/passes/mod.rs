@@ -51,8 +51,9 @@ pub fn run_pass<'r, P: Pass<'r>>(
     let storage = P::Storage::from_resources(r);
     P::run(arg, &mut ctx, storage);
 
+    let duration = Instant::now() - start;
     slog::info!(ctx.logger, "Pass complete"; 
-        "duration-ms" => (Instant::now() - start).as_millis(),
+        "execution-time" => format_args!("{}.{:06}s", duration.as_secs(), duration.subsec_micros()),
         "resource-usage" => r.heap_size_of_children());
 }
 
