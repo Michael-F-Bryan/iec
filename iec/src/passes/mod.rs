@@ -14,18 +14,16 @@ use crate::ecs::FromResources;
 use crate::ecs::Resources;
 use crate::hir::CompilationUnit;
 use crate::Diagnostics;
-
-/// Contextual information given to each pass.
-#[derive(Debug)]
-pub struct PassContext<'a> {
-    pub diags: &'a mut Diagnostics,
-}
+use heapsize::HeapSizeOf;
+use slog::{Discard, Logger};
+use std::time::Instant;
+use typename::TypeName;
 
 /// The "system" part of your typical Entity-Component-System application.
 ///
 /// Each [`Pass`] should be its own state-less chunk of logic, essentially a
 /// fancy function for updating the world.
-pub trait Pass<'r> {
+pub trait Pass<'r>: TypeName {
     /// Extra arguments passed into the [`Pass`] from the outside.
     type Arg: ?Sized;
     /// State which should be retrieved from [`Resources`] to be updated/read by
@@ -35,32 +33,65 @@ pub trait Pass<'r> {
     const DESCRIPTION: &'static str;
 
     /// Execute the pass.
-    fn run(args: &Self::Arg, ctx: PassContext<'r>, storage: Self::Storage);
+    fn run(args: &Self::Arg, ctx: &mut PassContext<'_>, storage: Self::Storage);
 }
 
 pub fn run_pass<'r, P: Pass<'r>>(
     r: &'r mut Resources,
     arg: &'r P::Arg,
-    diags: &'r mut Diagnostics,
+    ctx: &mut PassContext<'_>,
 ) {
+    let mut ctx = ctx.with(slog::o!("pass" => P::type_name()));
+    slog::info!(ctx.logger, "Pass started"; 
+        "description" => P::DESCRIPTION,
+        "resource-usage" => r.heap_size_of_children());
+    let start = Instant::now();
+
     P::Storage::ensure_registered(r);
-
     let storage = P::Storage::from_resources(r);
-    let ctx = PassContext { diags };
+    P::run(arg, &mut ctx, storage);
 
-    P::run(arg, ctx, storage);
+    slog::info!(ctx.logger, "Pass complete"; 
+        "duration-ms" => (Instant::now() - start).as_millis(),
+        "resource-usage" => r.heap_size_of_children());
 }
 
 /// Process the provided AST and execute semantic analysis.
 pub fn process(
     ast: &iec_syntax::File,
-    diags: &mut Diagnostics,
+    ctx: &mut PassContext<'_>,
 ) -> CompilationUnit {
     let mut resources = Resources::new();
 
-    run_pass::<RegisterBuiltins>(&mut resources, &(), diags);
-    run_pass::<SymbolTableResolution>(&mut resources, ast, diags);
-    run_pass::<VariableDiscovery>(&mut resources, ast, diags);
+    run_pass::<RegisterBuiltins>(&mut resources, &(), ctx);
+    run_pass::<SymbolTableResolution>(&mut resources, ast, ctx);
+    run_pass::<VariableDiscovery>(&mut resources, ast, ctx);
 
     CompilationUnit { resources }
+}
+
+/// Contextual information given to each pass.
+#[derive(Debug)]
+pub struct PassContext<'a> {
+    pub diags: &'a mut Diagnostics,
+    pub logger: Logger,
+}
+
+impl<'a> PassContext<'a> {
+    pub fn new_nop_logger(diags: &'a mut Diagnostics) -> PassContext<'a> {
+        PassContext {
+            diags,
+            logger: Logger::root(Discard, slog::o!()),
+        }
+    }
+
+    pub fn with<T>(&mut self, pairs: slog::OwnedKV<T>) -> PassContext<'_>
+    where
+        T: slog::SendSyncRefUnwindSafeKV + 'static,
+    {
+        PassContext {
+            diags: self.diags,
+            logger: self.logger.new(pairs),
+        }
+    }
 }

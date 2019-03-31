@@ -2,7 +2,9 @@ use super::symbol_table::SymbolTable;
 use super::{Pass, PassContext};
 use crate::ecs::{ReadWrite, SingletonMut};
 use crate::hir::{Symbol, Type};
+use typename::TypeName;
 
+#[derive(TypeName)]
 pub enum RegisterBuiltins {}
 
 pub const BUILTIN_TYPES: &[&str] = &[
@@ -15,7 +17,7 @@ impl<'r> Pass<'r> for RegisterBuiltins {
     type Storage = (SingletonMut<'r, SymbolTable>, ReadWrite<'r, Type>);
     const DESCRIPTION: &'static str = "Register builtin types and functions";
 
-    fn run(_: &Self::Arg, _ctx: PassContext<'r>, storage: Self::Storage) {
+    fn run(_: &Self::Arg, _ctx: &mut PassContext<'_>, storage: Self::Storage) {
         let (mut symbol_table, mut types) = storage;
 
         for name in BUILTIN_TYPES {

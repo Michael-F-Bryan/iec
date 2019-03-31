@@ -57,6 +57,7 @@ impl SymbolTable {
     }
 }
 
+#[derive(TypeName)]
 pub enum SymbolTableResolution {}
 
 impl<'r> Pass<'r> for SymbolTableResolution {
@@ -71,7 +72,7 @@ impl<'r> Pass<'r> for SymbolTableResolution {
 
     fn run(
         arg: &iec_syntax::File,
-        ctx: PassContext<'r>,
+        ctx: &mut PassContext<'_>,
         storage: Self::Storage,
     ) {
         let (
@@ -185,7 +186,7 @@ mod tests {
         crate::passes::run_pass::<SymbolTableResolution>(
             &mut resources,
             &ast,
-            &mut diags,
+            &mut PassContext::new_nop_logger(&mut diags),
         );
 
         // we should have updated the symbol table appropriately

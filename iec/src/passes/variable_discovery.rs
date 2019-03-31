@@ -6,7 +6,9 @@ use crate::Diagnostics;
 use codespan_reporting::{Diagnostic, Label};
 use iec_syntax::Item;
 use std::collections::HashMap;
+use typename::TypeName;
 
+#[derive(TypeName)]
 pub enum VariableDiscovery {}
 
 impl<'r> Pass<'r> for VariableDiscovery {
@@ -18,7 +20,11 @@ impl<'r> Pass<'r> for VariableDiscovery {
     );
     const DESCRIPTION: &'static str = "Resolve variable declarations in each program, function, or function block";
 
-    fn run(args: &Self::Arg, ctx: PassContext<'r>, storage: Self::Storage) {
+    fn run(
+        args: &Self::Arg,
+        ctx: &mut PassContext<'_>,
+        storage: Self::Storage,
+    ) {
         let (symbol_table, mut variables, mut programs) = storage;
 
         for item in &args.items {
