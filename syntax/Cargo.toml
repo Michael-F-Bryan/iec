@@ -21,3 +21,4 @@ lalrpop = "0.16.3"
 [dev-dependencies]
 pretty_assertions = "0.6.1"
 serde_json = "1.0.39"
+structopt = "0.2.15"
