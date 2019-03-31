@@ -19,11 +19,13 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq, TypeName, HeapSizeOf)]
 pub struct Function {
     pub name: String,
+    pub variables: Vec<EntityId>,
 }
 
 #[derive(Debug, Clone, PartialEq, TypeName, HeapSizeOf)]
 pub struct FunctionBlock {
     pub name: String,
+    pub variables: Vec<EntityId>,
 }
 
 #[derive(Debug, Clone, PartialEq, TypeName, HeapSizeOf)]

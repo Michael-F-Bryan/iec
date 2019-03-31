@@ -24,10 +24,10 @@ use typename::TypeName;
 /// Each [`Pass`] should be its own state-less chunk of logic, essentially a
 /// fancy function for updating the world.
 pub trait Pass<'r>: TypeName {
-    /// Extra arguments passed into the [`Pass`] from the outside.
+    /// Extra arguments passed into the [`Pass<'_>`] from the outside.
     type Arg: ?Sized;
     /// State which should be retrieved from [`Resources`] to be updated/read by
-    /// the [`Pass`].
+    /// the [`Pass`<'_>].
     type Storage: FromResources<'r>;
     /// A one-line description of what the pass is meant to do.
     const DESCRIPTION: &'static str;

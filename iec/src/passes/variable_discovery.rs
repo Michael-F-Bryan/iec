@@ -1,7 +1,7 @@
 use super::symbol_table::SymbolTable;
 use super::{Pass, PassContext};
 use crate::ecs::{Container, EntityId, ReadWrite, Singleton};
-use crate::hir::{Program, Symbol, Variable};
+use crate::hir::{Function, FunctionBlock, Program, Symbol, Variable};
 use crate::Diagnostics;
 use codespan_reporting::{Diagnostic, Label};
 use iec_syntax::Item;
@@ -17,6 +17,8 @@ impl<'r> Pass<'r> for VariableDiscovery {
         Singleton<'r, SymbolTable>,
         ReadWrite<'r, Variable>,
         ReadWrite<'r, Program>,
+        ReadWrite<'r, Function>,
+        ReadWrite<'r, FunctionBlock>,
     );
     const DESCRIPTION: &'static str = "Resolve variable declarations in each program, function, or function block";
 
@@ -25,7 +27,13 @@ impl<'r> Pass<'r> for VariableDiscovery {
         ctx: &mut PassContext<'_>,
         storage: Self::Storage,
     ) {
-        let (symbol_table, mut variables, mut programs) = storage;
+        let (
+            symbol_table,
+            mut variables,
+            mut programs,
+            mut functions,
+            mut function_blocks,
+        ) = storage;
 
         for item in &args.items {
             let (var_blocks, name) = match item {
@@ -44,14 +52,28 @@ impl<'r> Pass<'r> for VariableDiscovery {
                 ctx.diags,
             );
 
+            slog::debug!(ctx.logger, "Analysed item";
+                "name" => name,
+                "symbol" => format_args!("{:?}", symbol),
+                "variable-count" => variable_ids.len());
+
+            const ERR_MSG: &str =
+                "The item should have been added during symbol table discovery";
+
             match symbol {
                 Symbol::Program(p) => {
-                    let p = programs.get_mut(p)
-                        .expect("The program should have been added during symbol table discovery");
+                    let p = programs.get_mut(p).expect(ERR_MSG);
                     p.variables = variable_ids;
                 }
+                Symbol::Function(f) => {
+                    let f = functions.get_mut(f).expect(ERR_MSG);
+                    f.variables = variable_ids;
+                }
+                Symbol::FunctionBlock(fb) => {
+                    let fb = function_blocks.get_mut(fb).expect(ERR_MSG);
+                    fb.variables = variable_ids;
+                }
                 Symbol::Type(_) => unreachable!(),
-                _ => unimplemented!(),
             }
         }
     }

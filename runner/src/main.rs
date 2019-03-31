@@ -49,6 +49,7 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
 
     let syntax_logger = logger.new(slog::o!("stage" => "syntactic-analysis"));
     slog::debug!(syntax_logger, "Starting syntactic analysis");
+    let start_syntax = Instant::now();
 
     let file = match syntactic_analysis(&fm) {
         Ok(f) => f,
@@ -59,8 +60,10 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
         }
     };
 
+    let duration = Instant::now() - start_syntax;
     slog::debug!(syntax_logger, "Finished syntactic analysis"; 
-        "memory-usage" => file.heap_size_of_children());
+        "memory-usage" => file.heap_size_of_children(),
+        "execution-time" => format_args!("{}.{:03}s", duration.as_secs(), duration.subsec_millis()));
 
     let mut diags = Diagnostics::new();
 

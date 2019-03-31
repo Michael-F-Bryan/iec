@@ -1,7 +1,6 @@
 use super::{Pass, PassContext};
 use crate::ecs::{Container, ReadWrite, SingletonMut};
 use crate::hir::{Function, FunctionBlock, Program, Symbol};
-use crate::Diagnostics;
 use codespan_reporting::{Diagnostic, Label};
 use heapsize_derive::HeapSizeOf;
 use iec_syntax::Item;
@@ -84,22 +83,16 @@ impl<'r> Pass<'r> for SymbolTableResolution {
 
         for item in &arg.items {
             match item {
-                Item::Program(ref p) => register_program(
-                    p,
-                    &mut programs,
-                    ctx.diags,
-                    &mut symbol_table,
-                ),
-                Item::Function(ref f) => register_function(
-                    f,
-                    &mut functions,
-                    ctx.diags,
-                    &mut symbol_table,
-                ),
+                Item::Program(ref p) => {
+                    register_program(p, &mut programs, ctx, &mut symbol_table)
+                }
+                Item::Function(ref f) => {
+                    register_function(f, &mut functions, ctx, &mut symbol_table)
+                }
                 Item::FunctionBlock(ref fb) => register_function_block(
                     fb,
                     &mut function_blocks,
-                    ctx.diags,
+                    ctx,
                     &mut symbol_table,
                 ),
             }
@@ -110,11 +103,11 @@ impl<'r> Pass<'r> for SymbolTableResolution {
 fn register_program(
     p: &iec_syntax::Program,
     programs: &mut Container<Program>,
-    diags: &mut Diagnostics,
+    ctx: &mut PassContext<'_>,
     symbol_table: &mut SymbolTable,
 ) {
     if let Some(d) = symbol_table.check_for_duplicate_ident(&p.name) {
-        diags.push(d);
+        ctx.diags.push(d);
         return;
     }
 
@@ -124,44 +117,54 @@ fn register_program(
     };
     let program_id = programs.insert(program);
     symbol_table.insert(&p.name.value, Symbol::Program(program_id));
+    slog::debug!(ctx.logger, "Found a program"; 
+        "name" => &p.name.value,
+        "id" => program_id);
 }
 
 fn register_function_block(
     fb: &iec_syntax::FunctionBlock,
     function_blocks: &mut Container<FunctionBlock>,
-    diags: &mut Diagnostics,
+    ctx: &mut PassContext<'_>,
     symbol_table: &mut SymbolTable,
 ) {
     if let Some(d) = symbol_table.check_for_duplicate_ident(&fb.name) {
-        diags.push(d);
+        ctx.diags.push(d);
         return;
     }
 
     let function_block = FunctionBlock {
         name: fb.name.value.clone(),
+        variables: Vec::new(),
     };
     let function_block_id = function_blocks.insert(function_block);
     symbol_table
         .insert(&fb.name.value, Symbol::FunctionBlock(function_block_id));
+    slog::debug!(ctx.logger, "Found a function block"; 
+        "name" => &fb.name.value,
+        "id" => function_block_id);
 }
 
 fn register_function(
     f: &iec_syntax::Function,
     functions: &mut Container<Function>,
-    diags: &mut Diagnostics,
+    ctx: &mut PassContext<'_>,
     symbol_table: &mut SymbolTable,
 ) {
     if let Some(d) = symbol_table.check_for_duplicate_ident(&f.name) {
-        diags.push(d);
+        ctx.diags.push(d);
         return;
     }
 
     let function = Function {
         name: f.name.value.clone(),
+        variables: Vec::new(),
     };
-    let function_block_id = functions.insert(function);
-    symbol_table
-        .insert(&f.name.value, Symbol::FunctionBlock(function_block_id));
+    let function_id = functions.insert(function);
+    symbol_table.insert(&f.name.value, Symbol::Function(function_id));
+    slog::debug!(ctx.logger, "Found a function"; 
+        "name" => &f.name.value,
+        "id" => function_id);
 }
 
 #[cfg(test)]

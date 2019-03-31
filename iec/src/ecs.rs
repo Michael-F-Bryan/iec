@@ -41,6 +41,17 @@ impl EntityId {
     }
 }
 
+impl slog::Value for EntityId {
+    fn serialize(
+        &self,
+        _record: &slog::Record,
+        key: slog::Key,
+        ser: &mut dyn slog::Serializer,
+    ) -> slog::Result {
+        ser.emit_u32(key, self.0)
+    }
+}
+
 /// Abstract component type.
 pub trait Component: TypeName + HeapSizeOf + Any + Debug + 'static {}
 
