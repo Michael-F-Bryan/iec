@@ -3,6 +3,7 @@
 
 use heapsize::HeapSizeOf;
 use heapsize_derive::HeapSizeOf;
+use serde_derive::{Deserialize, Serialize};
 use std::any::{Any, TypeId};
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
@@ -15,7 +16,9 @@ use typename::TypeName;
 /// An opaque ID used to represent an entity.
 ///
 /// The normal method of creating an [`EntityId`] is to add it to a
-/// [`Container`] with [`Container::insert()`].
+/// [`Container`] with [`Container::insert()`]. [`Default::default()`] yields a
+/// "placeholder" [`EntityId`] which can be used when a temporary [`EntityId`]
+/// is required so that the real value can be filled in at a later time.
 #[derive(
     Debug,
     Default,
@@ -27,8 +30,16 @@ use typename::TypeName;
     Ord,
     PartialOrd,
     HeapSizeOf,
+    Serialize,
+    Deserialize,
 )]
 pub struct EntityId(u32);
+
+impl EntityId {
+    pub fn is_placeholder(&self) -> bool {
+        *self == EntityId::default()
+    }
+}
 
 /// Abstract component type.
 pub trait Component: TypeName + HeapSizeOf + Any + Debug + 'static {}
@@ -56,7 +67,7 @@ impl EntityGenerator {
 /// [`Resources::get_mut()`] methods and let you associate data with a specific
 /// [`EntityId`].
 ///
-/// However there will be times when the usual [`EntityId`] -> [Component`]
+/// However there will be times when the usual [`EntityId`] -> [`Component`]
 /// relation doesn't make sense. In this case you can register a "singleton
 /// component".
 ///
@@ -83,10 +94,7 @@ impl Resources {
     ///
     /// There is no way to "unregister" a component after it has been
     /// registered.
-    pub fn register<C>(&mut self)
-    where
-        C: Component,
-    {
+    pub fn register<C: Component>(&mut self) {
         self.assert_not_already_registered::<C>();
 
         let type_id = TypeId::of::<C>();
@@ -100,10 +108,7 @@ impl Resources {
     }
 
     /// Register a singleton component.
-    pub fn register_singleton<C>(&mut self)
-    where
-        C: Component + Default,
-    {
+    pub fn register_singleton<C: Component + Default>(&mut self) {
         self.assert_not_already_registered::<C>();
 
         let type_id = TypeId::of::<C>();
@@ -127,20 +132,14 @@ impl Resources {
         );
     }
 
-    fn ensure_registered<C>(&mut self)
-    where
-        C: Component,
-    {
+    fn ensure_registered<C: Component>(&mut self) {
         let type_id = TypeId::of::<C>();
         if !self.items.contains_key(&type_id) {
             self.register::<C>();
         }
     }
 
-    fn ensure_singleton_registered<C>(&mut self)
-    where
-        C: Component + Default,
-    {
+    fn ensure_singleton_registered<C: Component + Default>(&mut self) {
         let type_id = TypeId::of::<C>();
         if !self.singletons.contains_key(&type_id) {
             self.register_singleton::<C>();

@@ -1,15 +1,25 @@
 use super::{Pass, PassContext};
 use crate::ecs::{Container, EntityId, ReadWrite, SingletonMut};
-use crate::hir::{Function, FunctionBlock, Program};
+use crate::hir::{Function, FunctionBlock, Program, Symbol};
 use crate::Diagnostics;
 use codespan_reporting::{Diagnostic, Label};
 use heapsize_derive::HeapSizeOf;
 use iec_syntax::Item;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use typename::TypeName;
 
 /// A cache for looking up a component based on its identifier.
-#[derive(Debug, Default, Clone, PartialEq, TypeName, HeapSizeOf)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    TypeName,
+    HeapSizeOf,
+    Serialize,
+    Deserialize,
+)]
 pub struct SymbolTable(HashMap<String, Symbol>);
 
 impl SymbolTable {
@@ -43,23 +53,6 @@ impl SymbolTable {
                         .with_message("Duplicate declared here"),
                 ),
             )
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, TypeName, HeapSizeOf)]
-pub enum Symbol {
-    Program(EntityId),
-    Function(EntityId),
-    FunctionBlock(EntityId),
-}
-
-impl From<Symbol> for EntityId {
-    fn from(s: Symbol) -> EntityId {
-        match s {
-            Symbol::Program(id)
-            | Symbol::Function(id)
-            | Symbol::FunctionBlock(id) => id,
         }
     }
 }

@@ -2,9 +2,13 @@
 //! passes, where each pass does some processing on the provided input before
 //! updating the world.
 
+pub mod register_builtins;
 pub mod symbol_table;
+pub mod variable_discovery;
 
+pub use self::register_builtins::RegisterBuiltins;
 pub use self::symbol_table::SymbolTableResolution;
+pub use self::variable_discovery::VariableDiscovery;
 
 use crate::ecs::FromResources;
 use crate::ecs::Resources;
@@ -50,7 +54,9 @@ pub fn process(
 ) -> CompilationUnit {
     let mut resources = Resources::new();
 
+    run_pass::<RegisterBuiltins>(&mut resources, &(), diags);
     run_pass::<SymbolTableResolution>(&mut resources, ast, diags);
+    run_pass::<VariableDiscovery>(&mut resources, ast, diags);
 
     CompilationUnit { resources }
 }
