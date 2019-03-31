@@ -8,6 +8,7 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fmt::{self, Formatter};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use typename::TypeName;
 
@@ -32,17 +33,11 @@ impl<C: TypeName + HeapSizeOf + Any + Debug + 'static> Component for C {}
 
 /// A counter which generates atomically incrementing [`EntityId`]s.
 #[derive(Debug, Default, TypeName, HeapSizeOf)]
-pub struct EntityGenerator {
+struct EntityGenerator {
     last_id: AtomicUsize,
 }
 
 impl EntityGenerator {
-    pub const fn new() -> EntityGenerator {
-        EntityGenerator {
-            last_id: AtomicUsize::new(0),
-        }
-    }
-
     pub fn next_id(&self) -> EntityId {
         let next_id = self.last_id.fetch_add(1, Ordering::Relaxed);
         EntityId(next_id as u32)
@@ -68,6 +63,7 @@ impl EntityGenerator {
 /// the component.
 #[derive(Default)]
 pub struct Resources {
+    counter: Rc<EntityGenerator>,
     items: HashMap<TypeId, Box<Any>>,
     singletons: HashMap<TypeId, Box<Any>>,
     vtables: HashMap<TypeId, ContainerVtable>,
@@ -83,26 +79,49 @@ impl Resources {
     ///
     /// There is no way to "unregister" a component after it has been
     /// registered.
-    pub fn register<C>(&mut self)
+    fn register<C>(&mut self)
     where
         C: Component,
     {
         let type_id = TypeId::of::<C>();
-        let boxed_container = Box::new(RefCell::new(Container::<C>::new()));
+        let ids = Rc::clone(&self.counter);
+        let container = Container::<C>::new(ids);
+
+        let boxed_container = Box::new(RefCell::new(container));
         self.items.insert(type_id, boxed_container as Box<Any>);
         self.vtables
             .insert(type_id, ContainerVtable::for_component_container::<C>());
     }
 
-    pub fn register_singleton<C>(&mut self, value: C)
+    fn register_singleton<C>(&mut self)
+    where
+        C: Component + Default,
+    {
+        let type_id = TypeId::of::<C>();
+        self.singletons
+            .insert(type_id, Box::new(RefCell::new(C::default())));
+        self.vtables
+            .insert(type_id, ContainerVtable::for_singleton::<C>());
+    }
+
+    fn ensure_registered<C>(&mut self)
     where
         C: Component,
     {
         let type_id = TypeId::of::<C>();
-        self.singletons
-            .insert(type_id, Box::new(RefCell::new(value)));
-        self.vtables
-            .insert(type_id, ContainerVtable::for_singleton::<C>());
+        if !self.items.contains_key(&type_id) {
+            self.register::<C>();
+        }
+    }
+
+    fn ensure_singleton_registered<C>(&mut self)
+    where
+        C: Component + Default,
+    {
+        let type_id = TypeId::of::<C>();
+        if !self.singletons.contains_key(&type_id) {
+            self.register_singleton::<C>();
+        }
     }
 
     fn lookup<C: Component>(&self) -> &RefCell<Container<C>> {
@@ -150,12 +169,12 @@ impl Resources {
     }
 
     /// Look up a singleton component.
-    pub fn get_singleton<C: Component>(&self) -> Ref<'_, C> {
+    pub fn get_singleton<C: Component + Default>(&self) -> Ref<'_, C> {
         self.lookup_singleton::<C>().borrow()
     }
 
     /// Get a mutable reference to a singleton component.
-    pub fn get_singleton_mut<C: Component>(&self) -> RefMut<'_, C> {
+    pub fn get_singleton_mut<C: Component + Default>(&self) -> RefMut<'_, C> {
         self.lookup_singleton::<C>().borrow_mut()
     }
 
@@ -175,7 +194,9 @@ impl Debug for Resources {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut map = f.debug_map();
 
-        for (type_id, container) in &self.items {
+        let items = self.items.iter().chain(self.singletons.iter());
+
+        for (type_id, container) in items {
             let vtable = &self.vtables[type_id];
             let debug = vtable.debug(&**container);
             map.entry(&vtable.component_name, &debug);
@@ -188,6 +209,7 @@ impl Debug for Resources {
 impl HeapSizeOf for Resources {
     fn heap_size_of_children(&self) -> usize {
         let Resources {
+            counter: _,
             ref items,
             ref singletons,
             ref vtables,
@@ -223,14 +245,16 @@ fn heap_size_of_any(
 
 /// A fancy lookup table mapping [`Component`]s to their correspondinng
 /// [`EntityId`].
-#[derive(Default, Clone, PartialEq, TypeName, HeapSizeOf)]
+#[derive(Default, Clone, TypeName)]
 pub struct Container<C: Component> {
+    counter: Rc<EntityGenerator>,
     items: HashMap<EntityId, C>,
 }
 
 impl<C: Component> Container<C> {
-    fn new() -> Container<C> {
+    fn new(counter: Rc<EntityGenerator>) -> Container<C> {
         Container {
+            counter,
             items: HashMap::new(),
         }
     }
@@ -243,8 +267,10 @@ impl<C: Component> Container<C> {
         self.items.get_mut(&id)
     }
 
-    pub fn insert(&mut self, id: EntityId, item: C) {
+    pub fn insert(&mut self, item: C) -> EntityId {
+        let id = self.counter.next_id();
         self.items.insert(id, item);
+        id
     }
 
     pub fn iter<'this>(
@@ -258,11 +284,30 @@ impl<C: Component> Container<C> {
     ) -> impl Iterator<Item = (EntityId, &'this mut C)> + 'this {
         self.items.iter_mut().map(|(&id, c)| (id, c))
     }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
 }
 
 impl<C: Component> Debug for Container<C> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_map().entries(self.items.iter()).finish()
+    }
+}
+
+impl<C: Component> HeapSizeOf for Container<C> {
+    fn heap_size_of_children(&self) -> usize {
+        let Container {
+            counter: _,
+            ref items,
+        } = *self;
+
+        items.heap_size_of_children()
     }
 }
 
@@ -385,6 +430,7 @@ use crate::passes::Pass;
 /// [`Pass`].
 pub trait FromResources<'r>: Sized {
     fn from_resources(r: &'r Resources) -> Self;
+    fn ensure_registered(r: &mut Resources);
 }
 
 /// A read-only reference to a [`Container`] of [`Component`]s.
@@ -394,6 +440,10 @@ pub struct Read<'r, C: Component>(Ref<'r, Container<C>>);
 impl<'r, C: Component> FromResources<'r> for Read<'r, C> {
     fn from_resources(r: &'r Resources) -> Self {
         Read(r.get())
+    }
+
+    fn ensure_registered(r: &mut Resources) {
+        r.ensure_registered::<C>();
     }
 }
 
@@ -413,6 +463,10 @@ impl<'r, C: Component> FromResources<'r> for ReadWrite<'r, C> {
     fn from_resources(r: &'r Resources) -> Self {
         ReadWrite(r.get_mut())
     }
+
+    fn ensure_registered(r: &mut Resources) {
+        r.ensure_registered::<C>();
+    }
 }
 
 impl<'r, C: Component> Deref for ReadWrite<'r, C> {
@@ -431,15 +485,19 @@ impl<'r, C: Component> DerefMut for ReadWrite<'r, C> {
 
 /// An immutable reference to a singleton component.
 #[derive(Debug, TypeName)]
-pub struct Singleton<'r, T: Component>(Ref<'r, T>);
+pub struct Singleton<'r, T: Component + Default>(Ref<'r, T>);
 
-impl<'r, T: Component> FromResources<'r> for Singleton<'r, T> {
+impl<'r, T: Component + Default> FromResources<'r> for Singleton<'r, T> {
     fn from_resources(r: &'r Resources) -> Self {
         Singleton(r.get_singleton())
     }
+
+    fn ensure_registered(r: &mut Resources) {
+        r.ensure_singleton_registered::<T>();
+    }
 }
 
-impl<'r, C: Component> Deref for Singleton<'r, C> {
+impl<'r, C: Component + Default> Deref for Singleton<'r, C> {
     type Target = C;
 
     fn deref(&self) -> &Self::Target {
@@ -449,15 +507,19 @@ impl<'r, C: Component> Deref for Singleton<'r, C> {
 
 /// A mutable reference to a singleton component.
 #[derive(Debug, TypeName)]
-pub struct SingletonMut<'r, T: Component>(RefMut<'r, T>);
+pub struct SingletonMut<'r, T: Component + Default>(RefMut<'r, T>);
 
-impl<'r, T: Component> FromResources<'r> for SingletonMut<'r, T> {
+impl<'r, T: Component + Default> FromResources<'r> for SingletonMut<'r, T> {
     fn from_resources(r: &'r Resources) -> Self {
         SingletonMut(r.get_singleton_mut())
     }
+
+    fn ensure_registered(r: &mut Resources) {
+        r.ensure_singleton_registered::<T>();
+    }
 }
 
-impl<'r, C: Component> Deref for SingletonMut<'r, C> {
+impl<'r, C: Component + Default> Deref for SingletonMut<'r, C> {
     type Target = C;
 
     fn deref(&self) -> &Self::Target {
@@ -465,7 +527,7 @@ impl<'r, C: Component> Deref for SingletonMut<'r, C> {
     }
 }
 
-impl<'r, C: Component> DerefMut for SingletonMut<'r, C> {
+impl<'r, C: Component + Default> DerefMut for SingletonMut<'r, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.deref_mut()
     }
@@ -484,6 +546,12 @@ macro_rules! tuple_from_resource {
             fn from_resources(r: &'r Resources) -> Self {
                 ( $( $letter::from_resources(r), )* )
             }
+
+            fn ensure_registered(r: &mut Resources) {
+                $(
+                    $letter::ensure_registered(r);
+                )*
+            }
         }
     };
 }
@@ -495,6 +563,11 @@ tuple_from_resource!(A, B, C);
 tuple_from_resource!(A, B, C, D);
 tuple_from_resource!(A, B, C, D, E);
 tuple_from_resource!(A, B, C, D, E, F);
+tuple_from_resource!(A, B, C, D, E, F, G);
+tuple_from_resource!(A, B, C, D, E, F, G, H);
+tuple_from_resource!(A, B, C, D, E, F, G, H, I);
+tuple_from_resource!(A, B, C, D, E, F, G, H, I, J);
+tuple_from_resource!(A, B, C, D, E, F, G, H, I, J, K);
 
 #[cfg(test)]
 mod tests {
@@ -512,9 +585,7 @@ mod tests {
         assert_eq!(vtable.component_type_id, TypeId::of::<RandomComponent>());
 
         let container = RefCell::new(Container::default());
-        container
-            .borrow_mut()
-            .insert(EntityId(0), RandomComponent(42));
+        container.borrow_mut().insert(RandomComponent(42));
 
         let debug_format = format!("{:?}", vtable.debug(&container));
         let actual = format!("{:?}", container.borrow());
@@ -570,22 +641,17 @@ mod tests {
         res.register::<RandomComponent>();
 
         let size = res.heap_size_of_children();
-        assert!(size > 0);
+        assert_eq!(size, 928);
     }
 
     #[test]
     fn use_a_singleton_component() {
         let mut res = Resources::default();
-        res.register_singleton(RandomComponent(42));
+        res.register_singleton::<RandomComponent>();
 
         assert!(res.items.is_empty());
         assert_eq!(res.vtables.len(), 1);
         assert_eq!(res.singletons.len(), 1);
-
-        {
-            let got = res.get_singleton::<RandomComponent>();
-            assert_eq!(got.0, 42);
-        }
 
         {
             let mut got = res.get_singleton_mut::<RandomComponent>();

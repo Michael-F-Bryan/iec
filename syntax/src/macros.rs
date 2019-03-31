@@ -57,6 +57,14 @@ macro_rules! quote {
             span: Default::default(),
         }
     };
+    (function_block $name:ident { $($tail:tt)* }) => {
+        $crate::FunctionBlock {
+            name: $crate::quote!(@IDENT $name),
+            var_blocks: Vec::new(),
+            body: vec![],
+            span: Default::default(),
+        }
+    };
     ($( $name:ident : $type:ident; )*) => {
         vec![
             $( $crate::quote!($name : $type) ),*

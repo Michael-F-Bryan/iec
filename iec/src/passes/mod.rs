@@ -7,7 +7,7 @@ mod symbol_table;
 pub use self::symbol_table::SymbolTableResolution;
 
 use crate::ecs::FromResources;
-use crate::ecs::{EntityGenerator, Resources};
+use crate::ecs::Resources;
 use crate::hir::CompilationUnit;
 use crate::Diagnostics;
 
@@ -29,14 +29,27 @@ pub trait Pass<'r> {
     fn run(args: &Self::Arg, ctx: PassContext<'r>, storage: Self::Storage);
 }
 
+pub fn run_pass<'r, P: Pass<'r>>(
+    r: &'r mut Resources,
+    arg: &'r P::Arg,
+    diags: &'r mut Diagnostics,
+) {
+    P::Storage::ensure_registered(r);
+
+    let storage = P::Storage::from_resources(r);
+    let ctx = PassContext { diags };
+
+    P::run(arg, ctx, storage);
+}
+
 /// Process the provided AST and execute semantic analysis.
 pub fn process(
-    _ast: &iec_syntax::File,
-    _diags: &mut Diagnostics,
+    ast: &iec_syntax::File,
+    diags: &mut Diagnostics,
 ) -> CompilationUnit {
     let mut resources = Resources::new();
 
-    resources.register_singleton(EntityGenerator::new());
+    run_pass::<SymbolTableResolution>(&mut resources, ast, diags);
 
-    unimplemented!()
+    CompilationUnit { resources }
 }
