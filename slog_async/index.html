@@ -1,0 +1,48 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `slog_async` crate."><meta name="keywords" content="rust, rustlang, rust-lang, slog_async"><title>slog_async - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../slog_async/index.html'><img src='../rust-logo.png' alt='logo' width='100'></a><p class='location'>Crate slog_async</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all slog_async's items</p></a><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'slog_async', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/slog_async/lib.rs.html#2-730' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>slog_async</a></span></h1><div class='docblock'><h1 id="async-drain-for-slog-rs" class="section-header"><a href="#async-drain-for-slog-rs">Async drain for slog-rs</a></h1>
+<p><code>slog-rs</code> is an ecosystem of reusable components for structured, extensible,
+composable logging for Rust.</p>
+<p><code>slog-async</code> allows building <code>Drain</code>s that offload processing to another
+thread.  Typically, serialization and IO operations are slow enough that
+they make logging hinder the performance of the main code. Sending log
+records to another thread is much faster (ballpark of 100ns).</p>
+<p>Note: Unlike other logging solutions, <code>slog-rs</code> does not have a hardcoded
+async logging implementation. This crate is just a reasonable reference
+implementation. It should have good performance and work well in most use
+cases. See the documentation and implementation for more details.</p>
+<p>It's relatively easy to implement your own <code>slog-rs</code> async logging. Feel
+free to use this one as a starting point.</p>
+<h2 id="beware-of-stdprocessexit" class="section-header"><a href="#beware-of-stdprocessexit">Beware of <code>std::process::exit</code></a></h2>
+<p>When using <code>std::process::exit</code> to terminate a process with an exit code,
+it is important to notice that destructors will not be called. This matters
+for <code>slog_async</code> as it <strong>prevents flushing</strong> of the async drain and
+<strong>discards messages</strong> that are not yet written.</p>
+<p>A way around this issue is encapsulate the construction of the logger into
+its own function that returns before <code>std::process::exit</code> is called.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="comment">// ...</span>
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">_exit_code</span> <span class="op">=</span> <span class="ident">run</span>(); <span class="comment">// logger gets flushed as `run()` returns.</span>
+    <span class="comment">// std::process::exit(exit_code) // this needs to be commented or it&#39;ll</span>
+                                     <span class="comment">// end the doctest</span>
+}
+
+<span class="kw">fn</span> <span class="ident">run</span>() <span class="op">-&gt;</span> <span class="ident">i32</span> {
+   <span class="comment">// initialize the logger</span>
+
+   <span class="comment">// ... do your thing ...</span>
+
+   <span class="number">1</span> <span class="comment">// exit code to return</span>
+}</pre></div>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Async.html" title='slog_async::Async struct'>Async</a></td><td class='docblock-short'><p>Async drain</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.AsyncBuilder.html" title='slog_async::AsyncBuilder struct'>AsyncBuilder</a></td><td class='docblock-short'><p><code>Async</code> builder</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.AsyncCore.html" title='slog_async::AsyncCore struct'>AsyncCore</a></td><td class='docblock-short'><p>Core of <code>Async</code> drain</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.AsyncCoreBuilder.html" title='slog_async::AsyncCoreBuilder struct'>AsyncCoreBuilder</a></td><td class='docblock-short'><p><code>AsyncCore</code> builder</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.AsyncGuard.html" title='slog_async::AsyncGuard struct'>AsyncGuard</a></td><td class='docblock-short'><p>Async guard</p>
+</td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table><tr class='module-item'><td><a class="enum" href="enum.AsyncError.html" title='slog_async::AsyncError enum'>AsyncError</a></td><td class='docblock-short'><p>Errors reported by <code>Async</code></p>
+</td></tr><tr class='module-item'><td><a class="enum" href="enum.OverflowStrategy.html" title='slog_async::OverflowStrategy enum'>OverflowStrategy</a></td><td class='docblock-short'><p>Behavior used when the channel is full.</p>
+</td></tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table><tr class='module-item'><td><a class="type" href="type.AsyncResult.html" title='slog_async::AsyncResult type'>AsyncResult</a></td><td class='docblock-short'><p><code>AsyncResult</code> alias</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g., <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g., <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../";window.currentCrate = "slog_async";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

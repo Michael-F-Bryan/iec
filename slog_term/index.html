@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `slog_term` crate."><meta name="keywords" content="rust, rustlang, rust-lang, slog_term"><title>slog_term - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../slog_term/index.html'><img src='../rust-logo.png' alt='logo' width='100'></a><p class='location'>Crate slog_term</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all slog_term's items</p></a><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'slog_term', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/slog_term/lib.rs.html#2-1452' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>slog_term</a></span></h1><div class='docblock'><p><code>slog-rs</code>'s <code>Drain</code> for terminal output</p>
+<p>This crate implements output formatting targeting logging to
+terminal/console/shell or similar text-based IO.</p>
+<p><strong>Warning</strong>: <code>slog-term</code> (like <code>slog-rs</code> itself) is fast, modular and
+extensible.  It comes with a price: a lot of details (<em>that you don't care
+about
+right now and think they are stupid, until you actually do and then you are
+happy that someone thought of them for you</em>) are being taken into
+consideration. Anyway, <strong>if you just want to get a logging to terminal
+working with <code>slog</code></strong>, consider using a wrapper crate like
+<a href="https://docs.rs/sloggers/">sloggers</a> instead.</p>
+<p><strong>Note</strong>: A lot of users gets bitten by the fact that
+<code>slog::Logger::root(...)</code> requires a drain that is
+safe to send and share across threads (<code>Send+Sync</code>). With shared resource
+like terminal or a file to which you log, a synchronization needs to be
+taken care of. If you get compilation errors around <code>Sync</code> or <code>Send</code> you
+are doing something wrong around it.</p>
+<p>Using <code>Decorator</code> open trait, user can implement outputting
+using different colors, terminal types and so on.</p>
+<h1 id="synchronization-via-plainsyncdecorator" class="section-header"><a href="#synchronization-via-plainsyncdecorator">Synchronization via <code>PlainSyncDecorator</code></a></h1>
+<p>This logger works by synchronizing on the IO directly in
+<code>PlainSyncDecorator</code>.  The formatting itself is thread-safe.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">slog</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">slog_term</span>;
+
+<span class="kw">use</span> <span class="ident">slog</span>::<span class="kw-2">*</span>;
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">plain</span> <span class="op">=</span> <span class="ident">slog_term</span>::<span class="ident">PlainSyncDecorator</span>::<span class="ident">new</span>(<span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">stdout</span>());
+    <span class="kw">let</span> <span class="ident">logger</span> <span class="op">=</span> <span class="ident">Logger</span>::<span class="ident">root</span>(
+        <span class="ident">slog_term</span>::<span class="ident">FullFormat</span>::<span class="ident">new</span>(<span class="ident">plain</span>)
+        .<span class="ident">build</span>().<span class="ident">fuse</span>(), <span class="macro">o</span><span class="macro">!</span>()
+    );
+
+    <span class="macro">info</span><span class="macro">!</span>(<span class="ident">logger</span>, <span class="string">&quot;Logging ready!&quot;</span>);
+}</pre></div>
+<h1 id="synchronization-via-slog_async" class="section-header"><a href="#synchronization-via-slog_async">Synchronization via <code>slog_async</code></a></h1>
+<p>This drain puts logging into a separate thread via <code>slog_async::Async</code>:
+formatting and writing to terminal is happening in a one dedicated thread,
+so no further synchronization is required.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">slog</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">slog_term</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">slog_async</span>;
+
+<span class="kw">use</span> <span class="ident">slog</span>::<span class="ident">Drain</span>;
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">decorator</span> <span class="op">=</span> <span class="ident">slog_term</span>::<span class="ident">TermDecorator</span>::<span class="ident">new</span>().<span class="ident">build</span>();
+    <span class="kw">let</span> <span class="ident">drain</span> <span class="op">=</span> <span class="ident">slog_term</span>::<span class="ident">CompactFormat</span>::<span class="ident">new</span>(<span class="ident">decorator</span>).<span class="ident">build</span>().<span class="ident">fuse</span>();
+    <span class="kw">let</span> <span class="ident">drain</span> <span class="op">=</span> <span class="ident">slog_async</span>::<span class="ident">Async</span>::<span class="ident">new</span>(<span class="ident">drain</span>).<span class="ident">build</span>().<span class="ident">fuse</span>();
+
+    <span class="kw">let</span> <span class="ident">log</span> <span class="op">=</span> <span class="ident">slog</span>::<span class="ident">Logger</span>::<span class="ident">root</span>(<span class="ident">drain</span>, <span class="macro">o</span><span class="macro">!</span>());
+
+    <span class="macro">info</span><span class="macro">!</span>(<span class="ident">log</span>, <span class="string">&quot;Logging ready!&quot;</span>);
+}</pre></div>
+<h1 id="synchronization-via-mutex" class="section-header"><a href="#synchronization-via-mutex">Synchronization via <code>Mutex</code></a></h1>
+<p>This drain synchronizes by wrapping everything in a big mutex (yes,
+<code>Mutex&lt;Drain&gt;</code> implements a <code>Drain</code> trait). This is kind of slow, but in
+scripting languages like Ruby or Python pretty much the whole code is
+running in a one
+huge mutex and noone seems to mind, so I'm sure you're going to get away
+with this. Personally, I am a bit sad, that I've spent so much effort to
+give you tools to make your code as efficient as possible, and you choose
+this. ಠ_ಠ . But I'm here to serve, not to tell you what to do.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">slog</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">slog_term</span>;
+
+<span class="kw">use</span> <span class="ident">slog</span>::<span class="ident">Drain</span>;
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">decorator</span> <span class="op">=</span> <span class="ident">slog_term</span>::<span class="ident">TermDecorator</span>::<span class="ident">new</span>().<span class="ident">build</span>();
+    <span class="kw">let</span> <span class="ident">drain</span> <span class="op">=</span> <span class="ident">slog_term</span>::<span class="ident">CompactFormat</span>::<span class="ident">new</span>(<span class="ident">decorator</span>).<span class="ident">build</span>();
+    <span class="kw">let</span> <span class="ident">drain</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">drain</span>).<span class="ident">fuse</span>();
+
+    <span class="kw">let</span> <span class="ident">log</span> <span class="op">=</span> <span class="ident">slog</span>::<span class="ident">Logger</span>::<span class="ident">root</span>(<span class="ident">drain</span>, <span class="macro">o</span><span class="macro">!</span>());
+
+    <span class="macro">info</span><span class="macro">!</span>(<span class="ident">log</span>, <span class="string">&quot;Logging ready!&quot;</span>);
+}</pre></div>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.CompactFormat.html" title='slog_term::CompactFormat struct'>CompactFormat</a></td><td class='docblock-short'><p>Compact terminal-output formatting <code>Drain</code></p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.CompactFormatBuilder.html" title='slog_term::CompactFormatBuilder struct'>CompactFormatBuilder</a></td><td class='docblock-short'><p>Streamer builder</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.FullFormat.html" title='slog_term::FullFormat struct'>FullFormat</a></td><td class='docblock-short'><p>Terminal-output formatting <code>Drain</code></p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.FullFormatBuilder.html" title='slog_term::FullFormatBuilder struct'>FullFormatBuilder</a></td><td class='docblock-short'><p>Streamer builder</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.PlainDecorator.html" title='slog_term::PlainDecorator struct'>PlainDecorator</a></td><td class='docblock-short'><p>Plain (no-op) <code>Decorator</code> implementation</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.PlainRecordDecorator.html" title='slog_term::PlainRecordDecorator struct'>PlainRecordDecorator</a></td><td class='docblock-short'><p>Record decorator used by <code>PlainDecorator</code></p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.PlainSyncDecorator.html" title='slog_term::PlainSyncDecorator struct'>PlainSyncDecorator</a></td><td class='docblock-short'><p>PlainSync <code>Decorator</code> implementation</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.PlainSyncRecordDecorator.html" title='slog_term::PlainSyncRecordDecorator struct'>PlainSyncRecordDecorator</a></td><td class='docblock-short'><p><code>RecordDecorator</code> used by <code>PlainSyncDecorator</code></p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.TermDecorator.html" title='slog_term::TermDecorator struct'>TermDecorator</a></td><td class='docblock-short'><p><code>Decorator</code> implemented using <code>term</code> crate</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.TermDecoratorBuilder.html" title='slog_term::TermDecoratorBuilder struct'>TermDecoratorBuilder</a></td><td class='docblock-short'><p><code>TermDecorator</code> builder</p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.TermRecordDecorator.html" title='slog_term::TermRecordDecorator struct'>TermRecordDecorator</a></td><td class='docblock-short'><p>Record decorator used by <code>TermDecorator</code></p>
+</td></tr><tr class='module-item'><td><a class="struct" href="struct.TestStdoutWriter.html" title='slog_term::TestStdoutWriter struct'>TestStdoutWriter</a></td><td class='docblock-short'><p>Replacement for <code>std::io::stdout()</code> for when output capturing by rust's test
+harness is required.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.Decorator.html" title='slog_term::Decorator trait'>Decorator</a></td><td class='docblock-short'><p>Output decorator</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.RecordDecorator.html" title='slog_term::RecordDecorator trait'>RecordDecorator</a></td><td class='docblock-short'><p>Per-record decorator</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.ThreadSafeTimestampFn.html" title='slog_term::ThreadSafeTimestampFn trait'>ThreadSafeTimestampFn</a></td><td class='docblock-short'><p>Threadsafe timestamp formatting function type</p>
+</td></tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table><tr class='module-item'><td><a class="fn" href="fn.term_compact.html" title='slog_term::term_compact fn'>term_compact</a></td><td class='docblock-short'><p>Create a <code>CompactFormat</code> drain with default settings</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.term_full.html" title='slog_term::term_full fn'>term_full</a></td><td class='docblock-short'><p>Create a <code>FullFormat</code> drain with default settings</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.timestamp_local.html" title='slog_term::timestamp_local fn'>timestamp_local</a></td><td class='docblock-short'><p>Default local timezone timestamp function</p>
+</td></tr><tr class='module-item'><td><a class="fn" href="fn.timestamp_utc.html" title='slog_term::timestamp_utc fn'>timestamp_utc</a></td><td class='docblock-short'><p>Default UTC timestamp function</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g., <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g., <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../";window.currentCrate = "slog_term";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>
