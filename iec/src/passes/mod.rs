@@ -2,7 +2,7 @@
 //! passes, where each pass does some processing on the provided input before
 //! updating the world.
 
-mod symbol_table;
+pub mod symbol_table;
 
 pub use self::symbol_table::SymbolTableResolution;
 
@@ -11,6 +11,7 @@ use crate::ecs::Resources;
 use crate::hir::CompilationUnit;
 use crate::Diagnostics;
 
+/// Contextual information given to each pass.
 #[derive(Debug)]
 pub struct PassContext<'a> {
     pub diags: &'a mut Diagnostics,

@@ -8,34 +8,25 @@ use iec_syntax::Item;
 use std::collections::HashMap;
 use typename::TypeName;
 
-/// A component which can be used to figure out what type of thing a particular
-/// name resolves to.
-#[derive(Debug, Copy, Clone, PartialEq, TypeName, HeapSizeOf)]
-pub enum Symbol {
-    Program(EntityId),
-    Function(EntityId),
-    FunctionBlock(EntityId),
-}
-
-/// A cache for looking up a symbol based on its identifier.
+/// A cache for looking up a component based on its identifier.
 #[derive(Debug, Default, Clone, PartialEq, TypeName, HeapSizeOf)]
-pub struct SymbolTable(HashMap<String, EntityId>);
+pub struct SymbolTable(HashMap<String, Symbol>);
 
 impl SymbolTable {
-    pub fn insert(&mut self, name: &str, id: EntityId) {
-        self.0.insert(name.to_lowercase(), id);
+    pub fn insert(&mut self, name: &str, sym: Symbol) {
+        self.0.insert(name.to_lowercase(), sym);
     }
 
-    pub fn get(&self, name: &str) -> Option<EntityId> {
+    pub fn get(&self, name: &str) -> Option<Symbol> {
         let name = name.to_lowercase();
         self.0.get(&name).cloned()
     }
 
-    pub fn inner(&self) -> &HashMap<String, EntityId> {
+    pub fn inner(&self) -> &HashMap<String, Symbol> {
         &self.0
     }
 
-    pub fn inner_mut(&mut self) -> &mut HashMap<String, EntityId> {
+    pub fn inner_mut(&mut self) -> &mut HashMap<String, Symbol> {
         &mut self.0
     }
 
@@ -56,12 +47,28 @@ impl SymbolTable {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, TypeName, HeapSizeOf)]
+pub enum Symbol {
+    Program(EntityId),
+    Function(EntityId),
+    FunctionBlock(EntityId),
+}
+
+impl From<Symbol> for EntityId {
+    fn from(s: Symbol) -> EntityId {
+        match s {
+            Symbol::Program(id)
+            | Symbol::Function(id)
+            | Symbol::FunctionBlock(id) => id,
+        }
+    }
+}
+
 pub struct SymbolTableResolution;
 
 impl<'r> Pass<'r> for SymbolTableResolution {
     type Arg = iec_syntax::File;
     type Storage = (
-        ReadWrite<'r, Symbol>,
         SingletonMut<'r, SymbolTable>,
         ReadWrite<'r, Program>,
         ReadWrite<'r, Function>,
@@ -75,7 +82,6 @@ impl<'r> Pass<'r> for SymbolTableResolution {
         storage: Self::Storage,
     ) {
         let (
-            mut symbols,
             mut symbol_table,
             mut programs,
             mut functions,
@@ -88,21 +94,18 @@ impl<'r> Pass<'r> for SymbolTableResolution {
                     p,
                     &mut programs,
                     ctx.diags,
-                    &mut symbols,
                     &mut symbol_table,
                 ),
                 Item::Function(ref f) => register_function(
                     f,
                     &mut functions,
                     ctx.diags,
-                    &mut symbols,
                     &mut symbol_table,
                 ),
                 Item::FunctionBlock(ref fb) => register_function_block(
                     fb,
                     &mut function_blocks,
                     ctx.diags,
-                    &mut symbols,
                     &mut symbol_table,
                 ),
             }
@@ -114,7 +117,6 @@ fn register_program(
     p: &iec_syntax::Program,
     programs: &mut Container<Program>,
     diags: &mut Diagnostics,
-    symbols: &mut Container<Symbol>,
     symbol_table: &mut SymbolTable,
 ) {
     if let Some(d) = symbol_table.check_for_duplicate_ident(&p.name) {
@@ -126,18 +128,13 @@ fn register_program(
         name: p.name.value.clone(),
     };
     let program_id = programs.insert(program);
-
-    let symbol = Symbol::Program(program_id);
-    let symbol_id = symbols.insert(symbol);
-
-    symbol_table.insert(&p.name.value, symbol_id);
+    symbol_table.insert(&p.name.value, Symbol::Program(program_id));
 }
 
 fn register_function_block(
     fb: &iec_syntax::FunctionBlock,
     function_blocks: &mut Container<FunctionBlock>,
     diags: &mut Diagnostics,
-    symbols: &mut Container<Symbol>,
     symbol_table: &mut SymbolTable,
 ) {
     if let Some(d) = symbol_table.check_for_duplicate_ident(&fb.name) {
@@ -149,17 +146,14 @@ fn register_function_block(
         name: fb.name.value.clone(),
     };
     let function_block_id = function_blocks.insert(function_block);
-
-    let symbol = Symbol::FunctionBlock(function_block_id);
-    let symbol_id = symbols.insert(symbol);
-    symbol_table.insert(&fb.name.value, symbol_id);
+    symbol_table
+        .insert(&fb.name.value, Symbol::FunctionBlock(function_block_id));
 }
 
 fn register_function(
     f: &iec_syntax::Function,
     functions: &mut Container<Function>,
     diags: &mut Diagnostics,
-    symbols: &mut Container<Symbol>,
     symbol_table: &mut SymbolTable,
 ) {
     if let Some(d) = symbol_table.check_for_duplicate_ident(&f.name) {
@@ -171,10 +165,8 @@ fn register_function(
         name: f.name.value.clone(),
     };
     let function_block_id = functions.insert(function);
-
-    let symbol = Symbol::FunctionBlock(function_block_id);
-    let symbol_id = symbols.insert(symbol);
-    symbol_table.insert(&f.name.value, symbol_id);
+    symbol_table
+        .insert(&f.name.value, Symbol::FunctionBlock(function_block_id));
 }
 
 #[cfg(test)]
@@ -208,10 +200,17 @@ mod tests {
         assert!(symbol_table.0.contains_key("main"));
         assert!(symbol_table.0.contains_key("func"));
 
-        let symbols = resources.get::<Symbol>();
-        assert_eq!(symbols.len(), 2);
+        let programs = resources.get::<Program>();
+        assert_eq!(programs.len(), 1);
+        let symbol = symbol_table.get("main").unwrap();
+        let program = programs.get(symbol.into()).unwrap();
+        assert_eq!(program.name, "main");
 
-        assert_eq!(resources.get::<Program>().len(), 1);
-        assert_eq!(resources.get::<FunctionBlock>().len(), 1);
+        let function_blocks = resources.get::<FunctionBlock>();
+        assert_eq!(function_blocks.len(), 1);
+        assert_eq!(function_blocks.len(), 1);
+        let symbol = symbol_table.get("FUnc").unwrap();
+        let func = function_blocks.get(symbol.into()).unwrap();
+        assert_eq!(func.name, "FUnc");
     }
 }
