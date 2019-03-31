@@ -64,7 +64,7 @@ impl From<Symbol> for EntityId {
     }
 }
 
-pub struct SymbolTableResolution;
+pub enum SymbolTableResolution {}
 
 impl<'r> Pass<'r> for SymbolTableResolution {
     type Arg = iec_syntax::File;

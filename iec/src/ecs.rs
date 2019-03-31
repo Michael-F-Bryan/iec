@@ -12,6 +12,10 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use typename::TypeName;
 
+/// An opaque ID used to represent an entity.
+///
+/// The normal method of creating an [`EntityId`] is to add it to a
+/// [`Container`] with [`Container::insert()`].
 #[derive(
     Debug,
     Default,
@@ -79,10 +83,12 @@ impl Resources {
     ///
     /// There is no way to "unregister" a component after it has been
     /// registered.
-    fn register<C>(&mut self)
+    pub fn register<C>(&mut self)
     where
         C: Component,
     {
+        self.assert_not_already_registered::<C>();
+
         let type_id = TypeId::of::<C>();
         let ids = Rc::clone(&self.counter);
         let container = Container::<C>::new(ids);
@@ -93,15 +99,32 @@ impl Resources {
             .insert(type_id, ContainerVtable::for_component_container::<C>());
     }
 
-    fn register_singleton<C>(&mut self)
+    /// Register a singleton component.
+    pub fn register_singleton<C>(&mut self)
     where
         C: Component + Default,
     {
+        self.assert_not_already_registered::<C>();
+
         let type_id = TypeId::of::<C>();
         self.singletons
             .insert(type_id, Box::new(RefCell::new(C::default())));
         self.vtables
             .insert(type_id, ContainerVtable::for_singleton::<C>());
+    }
+
+    fn assert_not_already_registered<C: Component>(&self) {
+        let type_id = TypeId::of::<C>();
+        assert!(
+            !self.items.contains_key(&type_id),
+            "\"{}\" is already registered as a normal component",
+            C::type_name()
+        );
+        assert!(
+            !self.singletons.contains_key(&type_id),
+            "\"{}\" is already registered as a singleton component",
+            C::type_name()
+        );
     }
 
     fn ensure_registered<C>(&mut self)
@@ -243,8 +266,8 @@ fn heap_size_of_any(
     overhead + item_sizes
 }
 
-/// A fancy lookup table mapping [`Component`]s to their correspondinng
-/// [`EntityId`].
+/// A fancy lookup table mapping for associating a [`Component`] with a
+/// particular [`EntityId`].
 #[derive(Default, Clone, TypeName)]
 pub struct Container<C: Component> {
     counter: Rc<EntityGenerator>,
@@ -267,18 +290,22 @@ impl<C: Component> Container<C> {
         self.items.get_mut(&id)
     }
 
+    /// Add a component to the [`Container`], returning the [`EntityId`] it was
+    /// given.
     pub fn insert(&mut self, item: C) -> EntityId {
         let id = self.counter.next_id();
         self.items.insert(id, item);
         id
     }
 
+    /// Iterate over all the components in this [`Container`].
     pub fn iter<'this>(
         &'this self,
     ) -> impl Iterator<Item = (EntityId, &'this C)> + 'this {
         self.items.iter().map(|(&id, c)| (id, c))
     }
 
+    /// Mutably iterate over all the components in this [`Container`].
     pub fn iter_mut<'this>(
         &'this mut self,
     ) -> impl Iterator<Item = (EntityId, &'this mut C)> + 'this {
@@ -659,5 +686,13 @@ mod tests {
             let got = res.get_singleton::<RandomComponent>();
             assert_eq!(got.0, 7);
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn you_cant_register_twice() {
+        let mut res = Resources::default();
+        res.register::<RandomComponent>();
+        res.register_singleton::<RandomComponent>();
     }
 }
