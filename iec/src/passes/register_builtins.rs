@@ -15,7 +15,7 @@ impl<'r> Pass<'r> for RegisterBuiltins {
     type Storage = (SingletonMut<'r, SymbolTable>, ReadWrite<'r, Type>);
     const DESCRIPTION: &'static str = "Register builtin types and functions";
 
-    fn run(_: &Self::Arg, ctx: PassContext<'r>, storage: Self::Storage) {
+    fn run(_: &Self::Arg, _ctx: PassContext<'r>, storage: Self::Storage) {
         let (mut symbol_table, mut types) = storage;
 
         for name in BUILTIN_TYPES {

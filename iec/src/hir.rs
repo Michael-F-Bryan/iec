@@ -1,3 +1,5 @@
+//! The compiler's high-level intermediate representation.
+
 use crate::ecs::{EntityId, Resources};
 use heapsize_derive::HeapSizeOf;
 use serde_derive::{Deserialize, Serialize};

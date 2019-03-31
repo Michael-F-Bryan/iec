@@ -24,10 +24,14 @@ pub struct PassContext<'a> {
 /// The "system" part of your typical Entity-Component-System application.
 ///
 /// Each [`Pass`] should be its own state-less chunk of logic, essentially a
-/// fancy function for mutating the world.
+/// fancy function for updating the world.
 pub trait Pass<'r> {
+    /// Extra arguments passed into the [`Pass`] from the outside.
     type Arg: ?Sized;
+    /// State which should be retrieved from [`Resources`] to be updated/read by
+    /// the [`Pass`].
     type Storage: FromResources<'r>;
+    /// A one-line description of what the pass is meant to do.
     const DESCRIPTION: &'static str;
 
     /// Execute the pass.
