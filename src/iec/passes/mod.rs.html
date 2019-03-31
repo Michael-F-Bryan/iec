@@ -123,10 +123,10 @@
 <span class="doccomment">/// Each [`Pass`] should be its own state-less chunk of logic, essentially a</span>
 <span class="doccomment">/// fancy function for updating the world.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Pass</span><span class="op">&lt;</span><span class="lifetime">&#39;r</span><span class="op">&gt;</span>: <span class="ident">TypeName</span> {
-    <span class="doccomment">/// Extra arguments passed into the [`Pass`] from the outside.</span>
+    <span class="doccomment">/// Extra arguments passed into the [`Pass&lt;&#39;_&gt;`] from the outside.</span>
     <span class="kw">type</span> <span class="ident">Arg</span>: <span class="question-mark">?</span><span class="ident">Sized</span>;
     <span class="doccomment">/// State which should be retrieved from [`Resources`] to be updated/read by</span>
-    <span class="doccomment">/// the [`Pass`].</span>
+    <span class="doccomment">/// the [`Pass`&lt;&#39;_&gt;].</span>
     <span class="kw">type</span> <span class="ident">Storage</span>: <span class="ident">FromResources</span><span class="op">&lt;</span><span class="lifetime">&#39;r</span><span class="op">&gt;</span>;
     <span class="doccomment">/// A one-line description of what the pass is meant to do.</span>
     <span class="kw">const</span> <span class="ident">DESCRIPTION</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
