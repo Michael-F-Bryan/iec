@@ -534,7 +534,15 @@ impl<'r, C: Component + Default> DerefMut for SingletonMut<'r, C> {
 }
 
 macro_rules! tuple_from_resource {
-    ($($letter:ident),*) => {
+    ($first:ident $(,$tail:tt)+) => {
+        tuple_from_resource!(@IMPL $first $(, $tail)*);
+        tuple_from_resource!($($tail),*);
+    };
+    ($first:ident) => {
+        tuple_from_resource!(@IMPL $first);
+        tuple_from_resource!(@IMPL);
+    };
+    (@IMPL $($letter:ident),*) => {
         #[allow(unused_variables)]
         impl<'r, $( $letter, )* > FromResources<'r> for ( $( $letter, )* )
         where
@@ -556,18 +564,7 @@ macro_rules! tuple_from_resource {
     };
 }
 
-tuple_from_resource!();
-tuple_from_resource!(A);
-tuple_from_resource!(A, B);
-tuple_from_resource!(A, B, C);
-tuple_from_resource!(A, B, C, D);
-tuple_from_resource!(A, B, C, D, E);
-tuple_from_resource!(A, B, C, D, E, F);
-tuple_from_resource!(A, B, C, D, E, F, G);
-tuple_from_resource!(A, B, C, D, E, F, G, H);
-tuple_from_resource!(A, B, C, D, E, F, G, H, I);
-tuple_from_resource!(A, B, C, D, E, F, G, H, I, J);
-tuple_from_resource!(A, B, C, D, E, F, G, H, I, J, K);
+tuple_from_resource!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
 
 #[cfg(test)]
 mod tests {

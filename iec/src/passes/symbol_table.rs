@@ -213,12 +213,5 @@ mod tests {
 
         assert_eq!(resources.get::<Program>().len(), 1);
         assert_eq!(resources.get::<FunctionBlock>().len(), 1);
-
-        use heapsize::HeapSizeOf;
-        panic!(
-            "({} bytes) {:#?}",
-            resources.heap_size_of_children(),
-            resources
-        );
     }
 }
