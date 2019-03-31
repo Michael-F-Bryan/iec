@@ -20,7 +20,6 @@ use typename::TypeName;
 /// "placeholder" [`EntityId`] which can be used when a temporary [`EntityId`]
 /// is required so that the real value can be filled in at a later time.
 #[derive(
-    Debug,
     Default,
     Copy,
     Clone,
@@ -38,6 +37,14 @@ pub struct EntityId(u32);
 impl EntityId {
     pub fn is_placeholder(&self) -> bool {
         *self == EntityId::default()
+    }
+}
+
+impl Debug for EntityId {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // deliberately override Debug so we *don't* break lines on alternate
+        // output (i.e. `println!("{:#?}", some_entity_id)`).
+        write!(f, "EntityId({})", self.0)
     }
 }
 

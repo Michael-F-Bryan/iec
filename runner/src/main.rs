@@ -1,10 +1,16 @@
+//! The `main` function for the `iec` compiler.
+//!
+//! This crate doesn't really add new functionality to the compiler, instead it
+//! glues together the front-end ([`iec_syntax`]), middle-end ([`iec`]), and
+//! back-end to produce a functional compilation tool.
+
 use codespan::{ByteOffset, ByteSpan, CodeMap, FileMap};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use codespan_reporting::{Diagnostic, Label};
 use failure::{Error, ResultExt};
 use heapsize::HeapSizeOf;
 use iec::passes::PassContext;
-use iec::Diagnostics;
+use iec::{CompilationUnit, Diagnostics};
 use iec_syntax::File;
 use slog::{Drain, Level, Logger};
 use slog_derive::KV;
@@ -67,7 +73,11 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
 
     let mut diags = Diagnostics::new();
 
-    semantic_analysis(&file, &mut diags, logger);
+    let semantic_logger = logger.new(slog::o!("stage" => "semantic-analysis"));
+    slog::debug!(semantic_logger, "Started semantic analysis");
+    let start_semantics = Instant::now();
+
+    let cu = semantic_analysis(&file, &mut diags, logger);
 
     if diags.has_errors() {
         let mut ss = StandardStream::stdout(ColorChoice::Auto);
@@ -77,18 +87,29 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
         return Ok(());
     }
 
+    let duration = Instant::now() - start_semantics;
+    slog::debug!(semantic_logger, "Finished semantic analysis";
+        "execution-time" => format_args!("{}.{:03}s", duration.as_secs(), duration.subsec_millis()),
+        "memory-usage" => cu.heap_size_of_children() + file.heap_size_of_children());
+
     let duration = Instant::now() - start;
     slog::info!(logger, "Compilation finished"; 
         "execution-time" => format_args!("{}.{:03}s", duration.as_secs(), duration.subsec_millis()));
+
+    slog::debug!(logger, "{:#?}", cu);
     Ok(())
 }
 
-fn semantic_analysis(file: &File, diags: &mut Diagnostics, logger: &Logger) {
+fn semantic_analysis(
+    file: &File,
+    diags: &mut Diagnostics,
+    logger: &Logger,
+) -> CompilationUnit {
     let mut ctx = PassContext {
         diags,
         logger: logger.new(slog::o!("stage" => "semantic-analysis")),
     };
-    iec::process(file, &mut ctx);
+    iec::process(file, &mut ctx)
 }
 
 fn syntactic_analysis(file: &FileMap) -> Result<File, Diagnostic> {

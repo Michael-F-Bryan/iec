@@ -2,10 +2,12 @@
 //! passes, where each pass does some processing on the provided input before
 //! updating the world.
 
+pub mod basic_blocks;
 pub mod register_builtins;
 pub mod symbol_table;
 pub mod variable_discovery;
 
+pub use self::basic_blocks::BasicBlocks;
 pub use self::register_builtins::RegisterBuiltins;
 pub use self::symbol_table::SymbolTableResolution;
 pub use self::variable_discovery::VariableDiscovery;
@@ -67,6 +69,7 @@ pub fn process(
     run_pass::<RegisterBuiltins>(&mut resources, &(), ctx);
     run_pass::<SymbolTableResolution>(&mut resources, ast, ctx);
     run_pass::<VariableDiscovery>(&mut resources, ast, ctx);
+    run_pass::<BasicBlocks>(&mut resources, ast, ctx);
 
     CompilationUnit { resources }
 }
