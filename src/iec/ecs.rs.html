@@ -715,6 +715,13 @@
 <span id="715">715</span>
 <span id="716">716</span>
 <span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Super simple ECS-style building blocks, tailored for managing the various</span>
 <span class="doccomment">//! side-tables and data structures generated during the compilation process.</span>
@@ -738,7 +745,6 @@
 <span class="doccomment">/// &quot;placeholder&quot; [`EntityId`] which can be used when a temporary [`EntityId`]</span>
 <span class="doccomment">/// is required so that the real value can be filled in at a later time.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>,
     <span class="ident">Default</span>,
     <span class="ident">Copy</span>,
     <span class="ident">Clone</span>,
@@ -756,6 +762,14 @@
 <span class="kw">impl</span> <span class="ident">EntityId</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_placeholder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">EntityId</span>::<span class="ident">default</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">EntityId</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="comment">// deliberately override Debug so we *don&#39;t* break lines on alternate</span>
+        <span class="comment">// output (i.e. `println!(&quot;{:#?}&quot;, some_entity_id)`).</span>
+        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;EntityId({})&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
     }
 }
 
