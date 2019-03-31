@@ -15,6 +15,7 @@
 //! > in-depth understanding of how an ECS works.
 //!
 //! [`specs`]: https://github.com/slide-rs/specs
+//! [`cranelift`]: https://github.com/CraneStation/cranelift
 
 mod diagnostics;
 pub mod ecs;
@@ -24,17 +25,4 @@ pub mod passes;
 pub use crate::diagnostics::Diagnostics;
 pub use crate::ecs::EntityId;
 pub use crate::hir::CompilationUnit;
-
-use crate::ecs::{EntityGenerator, Resources};
-
-/// Process the provided AST and execute semantic analysis.
-pub fn process(
-    _ast: &iec_syntax::File,
-    _diags: &mut Diagnostics,
-) -> CompilationUnit {
-    let mut resources = Resources::new();
-
-    resources.register_singleton(EntityGenerator::new());
-
-    unimplemented!()
-}
+pub use crate::passes::process;

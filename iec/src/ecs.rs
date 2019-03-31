@@ -1,6 +1,8 @@
 //! Super simple ECS-style building blocks, tailored for managing the various
 //! side-tables and data structures generated during the compilation process.
 
+use heapsize::HeapSizeOf;
+use heapsize_derive::HeapSizeOf;
 use std::any::{Any, TypeId};
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
@@ -9,16 +11,27 @@ use std::fmt::{self, Formatter};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use typename::TypeName;
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Ord,
+    PartialOrd,
+    HeapSizeOf,
+)]
 pub struct EntityId(u32);
 
 /// Abstract component type.
-pub trait Component: TypeName + Any + Debug + 'static {}
+pub trait Component: TypeName + HeapSizeOf + Any + Debug + 'static {}
 
-impl<C: TypeName + Any + Debug + 'static> Component for C {}
+impl<C: TypeName + HeapSizeOf + Any + Debug + 'static> Component for C {}
 
 /// A counter which generates atomically incrementing [`EntityId`]s.
-#[derive(Debug, Default, TypeName)]
+#[derive(Debug, Default, TypeName, HeapSizeOf)]
 pub struct EntityGenerator {
     last_id: AtomicUsize,
 }
@@ -172,9 +185,45 @@ impl Debug for Resources {
     }
 }
 
+impl HeapSizeOf for Resources {
+    fn heap_size_of_children(&self) -> usize {
+        let Resources {
+            ref items,
+            ref singletons,
+            ref vtables,
+        } = *self;
+
+        vtables.heap_size_of_children()
+            + heap_size_of_any(
+                |ty, item| vtables[&ty].heap_size_of(item),
+                singletons,
+            )
+            + heap_size_of_any(
+                |ty, item| vtables[&ty].heap_size_of(item),
+                items,
+            )
+    }
+}
+
+fn heap_size_of_any(
+    item_heapsize: impl Fn(TypeId, &dyn Any) -> usize,
+    container: &HashMap<TypeId, Box<Any>>,
+) -> usize {
+    use std::mem::size_of;
+
+    let overhead = container.capacity()
+        * (size_of::<Box<Any>>() + size_of::<TypeId>() + size_of::<usize>());
+
+    let item_sizes = container.iter().fold(0, |n, (key, value)| {
+        n + key.heap_size_of_children() + item_heapsize(*key, &**value)
+    });
+
+    overhead + item_sizes
+}
+
 /// A fancy lookup table mapping [`Component`]s to their correspondinng
 /// [`EntityId`].
-#[derive(Default, Clone, PartialEq, TypeName)]
+#[derive(Default, Clone, PartialEq, TypeName, HeapSizeOf)]
 pub struct Container<C: Component> {
     items: HashMap<EntityId, C>,
 }
@@ -218,11 +267,13 @@ impl<C: Component> Debug for Container<C> {
 }
 
 type DebugFunc = fn(container: &dyn Any, f: &mut Formatter) -> fmt::Result;
+type HeapsizeFunc = fn(container: &dyn Any) -> usize;
 
 /// A vtable used to store container metadata and helper functions.
 #[derive(Clone)]
 struct ContainerVtable {
     debug: DebugFunc,
+    heap_size: HeapsizeFunc,
     /// The [`TypeId`] for the expected container. The container is usually a
     /// `RefCell<Container<C>>`.
     container_type_id: TypeId,
@@ -242,6 +293,12 @@ impl ContainerVtable {
                     .borrow()
                     .fmt(f)
             },
+            heap_size: |c| {
+                c.downcast_ref::<RefCell<Container<C>>>()
+                    .expect("Incorrect container type")
+                    .borrow()
+                    .heap_size_of_children()
+            },
             container_type_id: TypeId::of::<RefCell<Container<C>>>(),
             component_type_id: TypeId::of::<C>(),
             component_name: C::type_name(),
@@ -258,6 +315,12 @@ impl ContainerVtable {
                     .expect("Incorrect singleton type")
                     .borrow()
                     .fmt(f)
+            },
+            heap_size: |c| {
+                c.downcast_ref::<RefCell<C>>()
+                    .expect("Incorrect singleton type")
+                    .borrow()
+                    .heap_size_of_children()
             },
             container_type_id: TypeId::of::<RefCell<C>>(),
             component_type_id: TypeId::of::<C>(),
@@ -277,6 +340,24 @@ impl ContainerVtable {
             func: self.debug,
             item: container,
         }
+    }
+
+    fn heap_size_of(&self, container: &dyn Any) -> usize {
+        (self.heap_size)(container)
+    }
+}
+
+impl HeapSizeOf for ContainerVtable {
+    fn heap_size_of_children(&self) -> usize {
+        let ContainerVtable {
+            debug: _,
+            heap_size: _,
+            container_type_id: _,
+            component_type_id: _,
+            ref component_name,
+        } = *self;
+
+        component_name.heap_size_of_children()
     }
 }
 
@@ -392,19 +473,23 @@ impl<'r, C: Component> DerefMut for SingletonMut<'r, C> {
 
 macro_rules! tuple_from_resource {
     ($($letter:ident),*) => {
-        impl<'r, $( $letter ),* > FromResources<'r> for ( $( $letter ),* )
+        #[allow(unused_variables)]
+        impl<'r, $( $letter, )* > FromResources<'r> for ( $( $letter, )* )
         where
             $(
                 $letter : FromResources<'r>,
             )*
         {
+            #[allow(unused_variables)]
             fn from_resources(r: &'r Resources) -> Self {
-                ( $( $letter::from_resources(r) ),* )
+                ( $( $letter::from_resources(r), )* )
             }
         }
     };
 }
 
+tuple_from_resource!();
+tuple_from_resource!(A);
 tuple_from_resource!(A, B);
 tuple_from_resource!(A, B, C);
 tuple_from_resource!(A, B, C, D);
@@ -415,7 +500,7 @@ tuple_from_resource!(A, B, C, D, E, F);
 mod tests {
     use super::*;
 
-    #[derive(Debug, Default, Copy, Clone, PartialEq, TypeName)]
+    #[derive(Debug, Default, Copy, Clone, PartialEq, TypeName, HeapSizeOf)]
     struct RandomComponent(u32);
 
     #[test]
@@ -434,6 +519,10 @@ mod tests {
         let debug_format = format!("{:?}", vtable.debug(&container));
         let actual = format!("{:?}", container.borrow());
         assert_eq!(actual, debug_format);
+
+        let got_heapsize = vtable.heap_size_of(&container);
+        let actual = container.heap_size_of_children();
+        assert_eq!(got_heapsize, actual);
     }
 
     #[test]
@@ -473,6 +562,15 @@ mod tests {
 
         let key = format!("\"{}\"", RandomComponent::type_name());
         assert!(got.contains(&key));
+    }
+
+    #[test]
+    fn get_resource_heapsize() {
+        let mut res = Resources::default();
+        res.register::<RandomComponent>();
+
+        let size = res.heap_size_of_children();
+        assert!(size > 0);
     }
 
     #[test]
