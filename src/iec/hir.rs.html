@@ -56,6 +56,8 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ecs</span>::{<span class="ident">EntityId</span>, <span class="ident">Resources</span>};
 <span class="kw">use</span> <span class="ident">heapsize_derive</span>::<span class="ident">HeapSizeOf</span>;
@@ -70,6 +72,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">TypeName</span>, <span class="ident">HeapSizeOf</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Program</span> {
     <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">variables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityId</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">TypeName</span>, <span class="ident">HeapSizeOf</span>)]</span>
@@ -92,6 +95,7 @@
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Variable</span> {
     <span class="kw">pub</span> <span class="ident">parent</span>: <span class="ident">Symbol</span>,
+    <span class="kw">pub</span> <span class="ident">ty</span>: <span class="ident">EntityId</span>,
     <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
 }
 

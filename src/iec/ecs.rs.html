@@ -695,6 +695,15 @@
 <span id="695">695</span>
 <span id="696">696</span>
 <span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Super simple ECS-style building blocks, tailored for managing the various</span>
 <span class="doccomment">//! side-tables and data structures generated during the compilation process.</span>
@@ -965,7 +974,7 @@
 
 <span class="doccomment">/// A fancy lookup table mapping for associating a [`Component`] with a</span>
 <span class="doccomment">/// particular [`EntityId`].</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">TypeName</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">TypeName</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Container</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">Component</span><span class="op">&gt;</span> {
     <span class="ident">counter</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">EntityGenerator</span><span class="op">&gt;</span>,
     <span class="ident">items</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">EntityId</span>, <span class="ident">C</span><span class="op">&gt;</span>,
@@ -1021,6 +1030,15 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">Component</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Container</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_map</span>().<span class="ident">entries</span>(<span class="self">self</span>.<span class="ident">items</span>.<span class="ident">iter</span>()).<span class="ident">finish</span>()
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">Component</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Container</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="ident">Container</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+        <span class="ident">Container</span> {
+            <span class="ident">counter</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
+            <span class="ident">items</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
+        }
     }
 }
 
