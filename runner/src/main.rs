@@ -126,6 +126,7 @@ fn syntactic_analysis(file: &FileMap) -> Result<File, Diagnostic> {
                     )),
                 )
             }
+
             lalrpop_util::ParseError::ExtraToken {
                 token: (start, tok, end),
             } => Diagnostic::new_error(format!(
@@ -151,6 +152,7 @@ fn syntactic_analysis(file: &FileMap) -> Result<File, Diagnostic> {
                 "Expected one of {}",
                 expected.join(", ")
             )),
+
             lalrpop_util::ParseError::User { error } => {
                 Diagnostic::new_error(error.to_string())
             }
@@ -171,7 +173,7 @@ pub struct Args {
 }
 
 fn create_logger(verbosity: u32) -> Logger {
-    let decorator = slog_term::TermDecorator::new().build();
+    let decorator = slog_term::TermDecorator::new().stderr().build();
     let drain = slog_term::CompactFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
 

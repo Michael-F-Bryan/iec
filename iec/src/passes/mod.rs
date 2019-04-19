@@ -44,7 +44,7 @@ pub fn run_pass<'r, P: Pass<'r>>(
     ctx: &mut PassContext<'_>,
 ) {
     let mut ctx = ctx.with(slog::o!("pass" => P::type_name()));
-    slog::info!(ctx.logger, "Pass started"; 
+    slog::debug!(ctx.logger, "Pass started";
         "description" => P::DESCRIPTION,
         "resource-usage" => r.heap_size_of_children());
     let start = Instant::now();
@@ -54,7 +54,7 @@ pub fn run_pass<'r, P: Pass<'r>>(
     P::run(arg, &mut ctx, storage);
 
     let duration = Instant::now() - start;
-    slog::info!(ctx.logger, "Pass complete"; 
+    slog::debug!(ctx.logger, "Pass complete";
         "execution-time" => format_args!("{}.{:06}s", duration.as_secs(), duration.subsec_micros()),
         "resource-usage" => r.heap_size_of_children());
 }
