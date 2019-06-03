@@ -12,10 +12,10 @@ use iec::{CompilationUnit, Diagnostics};
 use iec_syntax::File;
 use slog::{Drain, Level, Logger};
 use slog_derive::KV;
+use specs::World;
 use std::str::FromStr;
 use std::time::Instant;
 use structopt::StructOpt;
-use specs::World;
 
 fn main() {
     let args = Args::from_args();
@@ -75,7 +75,7 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
     slog::debug!(semantic_logger, "Started semantic analysis");
     let start_semantics = Instant::now();
 
-    let (world, cu) = semantic_analysis(file, &mut diags, logger);
+    let (_world, cu) = semantic_analysis(file, &mut diags, logger);
 
     if diags.has_errors() {
         let mut ss = StandardStream::stdout(ColorChoice::Auto);
@@ -97,7 +97,11 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
     Ok(())
 }
 
-fn semantic_analysis(file: File, diags: &mut Diagnostics, logger: &Logger) -> (World, CompilationUnit) {
+fn semantic_analysis(
+    file: File,
+    diags: &mut Diagnostics,
+    logger: &Logger,
+) -> (World, CompilationUnit) {
     let logger = logger.new(slog::o!("stage" => "semantic-analysis"));
     iec::process(file, diags, &logger)
 }

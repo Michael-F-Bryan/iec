@@ -1,5 +1,9 @@
 //! The compiler's high-level intermediate representation.
 
+mod symbol_table;
+
+pub use self::symbol_table::SymbolTable;
+
 use specs::{Component, Entity, VecStorage};
 use specs_derive::Component;
 use std::iter::FromIterator;

@@ -1,11 +1,17 @@
+mod builtins;
+
+pub use self::builtins::Builtins;
+
 use crate::hir::Symbol;
 use crate::{CompilationUnit, Diagnostics};
 use iec_syntax::File;
 use slog::Logger;
-use specs::{DispatcherBuilder, Join, ReadStorage, World};
+use specs::{DispatcherBuilder, Join, ReadStorage, World, System};
 
-pub fn initialize_systems(builder: &mut DispatcherBuilder<'_, '_>) {}
+pub fn initialize_systems(_builder: &mut DispatcherBuilder<'_, '_>) {}
 
+/// Process an Abstract Syntax Tree, applying typechecking and various other
+/// checks/transformations as part of the compilation process.
 pub fn process(file: File, diags: &mut Diagnostics, logger: &Logger) -> (World, CompilationUnit) {
     let _guard = slog_scope::set_global_logger(logger.clone());
 
@@ -36,4 +42,8 @@ fn resolve_compilation_unit(world: &World) -> CompilationUnit {
         .map(|(_, symbol)| symbol)
         .cloned()
         .collect()
+}
+
+pub(crate) trait Pass<'a>: System<'a> {
+    const NAME: &'static str;
 }
