@@ -37,9 +37,12 @@ pub struct Type {
     Debug, Clone, PartialEq, TypeName, Serialize, Deserialize, HeapSizeOf,
 )]
 pub struct Variable {
+    /// The item this variable is defined in.
     pub parent: Symbol,
+    /// The variable's type.
     pub ty: EntityId,
-    pub name: String,
+    /// The variable's name, if one exists.
+    pub name: Option<String>,
 }
 
 #[derive(
@@ -62,3 +65,23 @@ impl From<Symbol> for EntityId {
         }
     }
 }
+
+/// A three address code instruction.
+#[derive(
+    Debug,
+    TypeName,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    HeapSizeOf,
+    Serialize,
+    Deserialize,
+)]
+pub enum Instruction {}
+
+#[derive(
+    TypeName, Debug, Clone, PartialEq, HeapSizeOf, Serialize, Deserialize,
+)]
+pub struct BasicBlock {}

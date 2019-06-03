@@ -134,7 +134,7 @@ fn resolve_variables(
             let id = variables.insert(Variable {
                 parent: parent_scope,
                 ty: type_id,
-                name: name.clone(),
+                name: Some(name.clone()),
             });
             ids.push(id);
         }
@@ -171,7 +171,7 @@ mod tests {
         let (id, var) = variables.iter().next().unwrap();
 
         assert!(got.contains(&id));
-        assert_eq!(var.name, "x");
+        assert_eq!(var.name, Some(String::from("x")));
     }
 
     #[test]
