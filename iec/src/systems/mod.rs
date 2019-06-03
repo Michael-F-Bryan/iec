@@ -1,12 +1,14 @@
 mod builtins;
+mod symbol_discovery;
 
 pub use self::builtins::Builtins;
+pub use self::symbol_discovery::SymbolDiscovery;
 
 use crate::hir::Symbol;
 use crate::{CompilationUnit, Diagnostics};
 use iec_syntax::File;
 use slog::Logger;
-use specs::{DispatcherBuilder, Join, ReadStorage, World, System};
+use specs::{DispatcherBuilder, Join, ReadStorage, System, World};
 
 pub fn initialize_systems(_builder: &mut DispatcherBuilder<'_, '_>) {}
 
