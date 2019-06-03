@@ -106,10 +106,7 @@ fn register_program(
 
     let program_id = entities
         .build_entity()
-        .with(
-            Program,
-            programs,
-        )
+        .with(Program, programs)
         .with(
             Symbol {
                 name: p.name.value.clone(),
@@ -138,10 +135,7 @@ fn register_function(
 
     let function_id = entities
         .build_entity()
-        .with(
-            Function ,
-            functions,
-        )
+        .with(Function, functions)
         .with(
             Symbol {
                 name: f.name.value.clone(),
@@ -170,10 +164,7 @@ fn register_function_block(
 
     let function_id = entities
         .build_entity()
-        .with(
-            FunctionBlock ,
-            function_blocks,
-        )
+        .with(FunctionBlock, function_blocks)
         .with(
             Symbol {
                 name: f.name.value.clone(),

@@ -24,10 +24,7 @@ impl<'a> System<'a> for Builtins {
         for name in Builtins::TYPES {
             entities
                 .build_entity()
-                .with(
-                    Type,
-                    &mut types,
-                )
+                .with(Type, &mut types)
                 .with(
                     Symbol {
                         name: name.to_string(),

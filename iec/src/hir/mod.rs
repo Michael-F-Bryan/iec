@@ -49,7 +49,7 @@ pub struct Variables {
 #[storage(VecStorage)]
 pub struct Variable {
     /// The item this variable is defined in.
-    pub parent: Symbol,
+    pub parent: Entity,
     /// The variable's type.
     pub ty: Entity,
     /// The variable's name, if one exists.

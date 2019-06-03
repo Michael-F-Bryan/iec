@@ -1,8 +1,10 @@
 mod builtins;
 mod symbol_discovery;
+mod variable_discovery;
 
 pub use self::builtins::Builtins;
 pub use self::symbol_discovery::SymbolDiscovery;
+pub use self::variable_discovery::VariableDiscovery;
 
 use crate::hir::Symbol;
 use crate::{CompilationUnit, Diagnostics};
@@ -13,6 +15,11 @@ use specs::{DispatcherBuilder, Join, ReadStorage, World};
 pub fn initialize_systems(builder: &mut DispatcherBuilder<'_, '_>) {
     builder.add(Builtins, Builtins::NAME, &[]);
     builder.add(SymbolDiscovery, SymbolDiscovery::NAME, &[]);
+    builder.add(
+        VariableDiscovery,
+        VariableDiscovery::NAME,
+        &[Builtins::NAME, SymbolDiscovery::NAME],
+    );
 }
 
 /// Process an Abstract Syntax Tree, applying typechecking and various other
