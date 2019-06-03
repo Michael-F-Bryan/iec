@@ -47,7 +47,6 @@ fn resolve_compilation_unit(world: &World) -> CompilationUnit {
 
     (&entities, &symbols)
         .join()
-        .map(|(_, symbol)| symbol)
-        .cloned()
+        .map(|(entity, _)| entity)
         .collect()
 }

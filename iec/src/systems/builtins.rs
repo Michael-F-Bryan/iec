@@ -25,9 +25,7 @@ impl<'a> System<'a> for Builtins {
             entities
                 .build_entity()
                 .with(
-                    Type {
-                        name: name.to_string(),
-                    },
+                    Type,
                     &mut types,
                 )
                 .with(

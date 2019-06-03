@@ -7,42 +7,42 @@ use typename::TypeName;
 
 #[derive(Debug, TypeName)]
 pub struct CompilationUnit {
-    pub symbols: Vec<Symbol>,
+    pub symbols: Vec<Entity>,
 }
 
-impl FromIterator<Symbol> for CompilationUnit {
-    fn from_iter<I: IntoIterator<Item = Symbol>>(iter: I) -> CompilationUnit {
+impl FromIterator<Entity> for CompilationUnit {
+    fn from_iter<I: IntoIterator<Item = Entity>>(iter: I) -> CompilationUnit {
         CompilationUnit {
             symbols: iter.into_iter().collect(),
         }
     }
 }
 
+/// A marker indicating this entity is a program.
 #[derive(Debug, Clone, PartialEq, TypeName, Component)]
 #[storage(VecStorage)]
-pub struct Program {
-    pub name: String,
-    pub variables: Vec<Entity>,
-}
+pub struct Program;
+
+/// A marker indicating this entity is a function.
+#[derive(Debug, Clone, PartialEq, TypeName, Component)]
+#[storage(VecStorage)]
+pub struct Function;
+
+/// A marker indicating this entity is a function block.
+#[derive(Debug, Clone, PartialEq, TypeName, Component)]
+#[storage(VecStorage)]
+pub struct FunctionBlock;
 
 #[derive(Debug, Clone, PartialEq, TypeName, Component)]
 #[storage(VecStorage)]
-pub struct Function {
-    pub name: String,
-    pub variables: Vec<Entity>,
-}
+pub struct Type;
 
+/// The set of variables defined within a particular scope.
 #[derive(Debug, Clone, PartialEq, TypeName, Component)]
 #[storage(VecStorage)]
-pub struct FunctionBlock {
-    pub name: String,
+pub struct Variables {
+    pub scope: Entity,
     pub variables: Vec<Entity>,
-}
-
-#[derive(Debug, Clone, PartialEq, TypeName, Component)]
-#[storage(VecStorage)]
-pub struct Type {
-    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, TypeName, Component)]
@@ -56,6 +56,7 @@ pub struct Variable {
     pub name: Option<String>,
 }
 
+/// Something with a globally accessible name.
 #[derive(Debug, Clone, PartialEq, TypeName, Component)]
 #[storage(VecStorage)]
 pub struct Symbol {

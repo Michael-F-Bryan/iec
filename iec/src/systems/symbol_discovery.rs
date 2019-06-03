@@ -107,10 +107,7 @@ fn register_program(
     let program_id = entities
         .build_entity()
         .with(
-            Program {
-                name: p.name.value.clone(),
-                variables: Vec::new(),
-            },
+            Program,
             programs,
         )
         .with(
@@ -142,10 +139,7 @@ fn register_function(
     let function_id = entities
         .build_entity()
         .with(
-            Function {
-                name: f.name.value.clone(),
-                variables: Vec::new(),
-            },
+            Function ,
             functions,
         )
         .with(
@@ -177,10 +171,7 @@ fn register_function_block(
     let function_id = entities
         .build_entity()
         .with(
-            FunctionBlock {
-                name: f.name.value.clone(),
-                variables: Vec::new(),
-            },
+            FunctionBlock ,
             function_blocks,
         )
         .with(
