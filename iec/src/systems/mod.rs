@@ -8,9 +8,12 @@ use crate::hir::Symbol;
 use crate::{CompilationUnit, Diagnostics};
 use iec_syntax::File;
 use slog::Logger;
-use specs::{DispatcherBuilder, Join, ReadStorage, System, World};
+use specs::{DispatcherBuilder, Join, ReadStorage, World};
 
-pub fn initialize_systems(_builder: &mut DispatcherBuilder<'_, '_>) {}
+pub fn initialize_systems(builder: &mut DispatcherBuilder<'_, '_>) {
+    builder.add(Builtins, Builtins::NAME, &[]);
+    builder.add(SymbolDiscovery, SymbolDiscovery::NAME, &[]);
+}
 
 /// Process an Abstract Syntax Tree, applying typechecking and various other
 /// checks/transformations as part of the compilation process.
@@ -21,14 +24,17 @@ pub fn process(file: File, diags: &mut Diagnostics, logger: &Logger) -> (World, 
     let mut world = World::new();
     world.add_resource(file);
     world.add_resource(Diagnostics::new());
+    world.add_resource(Logger::clone(logger));
 
     // create the dispatcher and wire up our systems
     let mut builder = DispatcherBuilder::new();
     initialize_systems(&mut builder);
-
-    builder.build().dispatch(&world.res);
+    let mut dispatcher = builder.build();
+    dispatcher.setup(&mut world.res);
+    dispatcher.dispatch(&world.res);
 
     // propagate errors and extract the results
+    assert!(world.res.has_value::<Diagnostics>());
     diags.extend(world.write_resource::<Diagnostics>().drain());
     let cu = resolve_compilation_unit(&world);
 
@@ -44,8 +50,4 @@ fn resolve_compilation_unit(world: &World) -> CompilationUnit {
         .map(|(_, symbol)| symbol)
         .cloned()
         .collect()
-}
-
-pub(crate) trait Pass<'a>: System<'a> {
-    const NAME: &'static str;
 }

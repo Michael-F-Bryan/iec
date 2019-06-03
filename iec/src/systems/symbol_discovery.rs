@@ -1,19 +1,24 @@
-use crate::hir::{Function, FunctionBlock, Program, Symbol, SymbolTable};
+use crate::hir::{Function, FunctionBlock, Program, Symbol, };
 use crate::Diagnostics;
 use iec_syntax::{File, Item};
 use slog::Logger;
-use specs::{Entities, ReadExpect, System, Write, WriteExpect, WriteStorage};
+use specs::{Entities, ReadExpect, System, Write, WriteStorage, Join};
+use codespan_reporting::{Label, Diagnostic};
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct SymbolDiscovery;
 
+impl SymbolDiscovery {
+    pub const NAME: &'static str = "symbol-discovery";
+}
+
 impl<'a> System<'a> for SymbolDiscovery {
     type SystemData = (
-        WriteExpect<'a, Diagnostics>,
+        Write<'a, Diagnostics>,
         ReadExpect<'a, File>,
         ReadExpect<'a, Logger>,
         Entities<'a>,
-        Write<'a, SymbolTable>,
+        WriteStorage<'a, Symbol>,
         WriteStorage<'a, Program>,
         WriteStorage<'a, Function>,
         WriteStorage<'a, FunctionBlock>,
@@ -25,7 +30,7 @@ impl<'a> System<'a> for SymbolDiscovery {
             file,
             logger,
             entities,
-            mut symbol_table,
+            mut symbols,
             mut programs,
             _functions,
             _function_blocks,
@@ -40,7 +45,7 @@ impl<'a> System<'a> for SymbolDiscovery {
                         &logger,
                         &mut diagnostics,
                         &mut programs,
-                        &mut symbol_table,
+                        &mut symbols,
                     );
                 }
                 Item::Function(_) => {
@@ -62,9 +67,12 @@ fn register_program(
     logger: &Logger,
     diags: &mut Diagnostics,
     programs: &mut WriteStorage<'_, Program>,
-    symbol_table: &mut SymbolTable,
+    symbols: &mut WriteStorage<'_, Symbol>,
 ) {
-    if let Some(d) = symbol_table.check_for_duplicate_ident(&p.name) {
+    if (entities, &mut *symbols).join().any(|(_, symbol)| symbol.name == p.name.value) {
+                let d = Diagnostic::new_error("Name is already declared").with_label(
+                    Label::new_primary(p.name.span).with_message("Duplicate declared here"),
+                );
         diags.push(d);
         return;
     }
@@ -78,9 +86,9 @@ fn register_program(
             },
             programs,
         )
+        .with(Symbol { name: p.name.value.clone()}, symbols)
         .build();
 
-    symbol_table.insert(&p.name.value, Symbol::Program(program_id));
     slog::debug!(logger, "Found a program"; 
         "name" => &p.name.value,
         "id" => format_args!("{:?}", program_id));

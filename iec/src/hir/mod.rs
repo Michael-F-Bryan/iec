@@ -1,9 +1,5 @@
 //! The compiler's high-level intermediate representation.
 
-mod symbol_table;
-
-pub use self::symbol_table::SymbolTable;
-
 use specs::{Component, Entity, VecStorage};
 use specs_derive::Component;
 use std::iter::FromIterator;
@@ -60,24 +56,10 @@ pub struct Variable {
     pub name: Option<String>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, TypeName, Component)]
+#[derive(Debug, Clone, PartialEq, TypeName, Component)]
 #[storage(VecStorage)]
-pub enum Symbol {
-    Program(Entity),
-    Function(Entity),
-    FunctionBlock(Entity),
-    Type(Entity),
-}
-
-impl From<Symbol> for Entity {
-    fn from(s: Symbol) -> Entity {
-        match s {
-            Symbol::Program(id)
-            | Symbol::Type(id)
-            | Symbol::Function(id)
-            | Symbol::FunctionBlock(id) => id,
-        }
-    }
+pub struct Symbol {
+    pub name: String,
 }
 
 /// A three address code instruction.
