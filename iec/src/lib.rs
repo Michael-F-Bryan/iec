@@ -18,11 +18,9 @@
 //! [`cranelift`]: https://github.com/CraneStation/cranelift
 
 mod diagnostics;
-pub mod ecs;
 pub mod hir;
-pub mod passes;
+pub mod systems;
 
 pub use crate::diagnostics::Diagnostics;
-pub use crate::ecs::EntityId;
 pub use crate::hir::CompilationUnit;
-pub use crate::passes::process;
+pub use crate::systems::process;
