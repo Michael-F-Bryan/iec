@@ -1,5 +1,5 @@
-use crate::hir::{SymbolTable, Type, Symbol};
-use specs::{System, Write, WriteStorage, Entities};
+use crate::hir::{Symbol, SymbolTable, Type};
+use specs::{Entities, System, Write, WriteStorage};
 
 /// A system for registering all builtin types and functions.
 pub struct Builtins;
@@ -17,8 +17,14 @@ impl<'a> System<'a> for Builtins {
         let (entities, mut symbol_table, mut types) = data;
 
         for name in Builtins::TYPES {
-            let ent = entities.build_entity()
-                .with(Type { name: name.to_string(), }, &mut types)
+            let ent = entities
+                .build_entity()
+                .with(
+                    Type {
+                        name: name.to_string(),
+                    },
+                    &mut types,
+                )
                 .build();
             symbol_table.insert(name, Symbol::Type(ent));
         }

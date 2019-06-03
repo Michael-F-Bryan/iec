@@ -15,19 +15,13 @@ fn main() {
 
     match args.format {
         OutputFormat::Rust => println!("{:#?}", file),
-        OutputFormat::Json => {
-            serde_json::to_writer(io::stdout(), &file).unwrap()
-        }
-        OutputFormat::PrettyJson => {
-            serde_json::to_writer_pretty(io::stdout(), &file).unwrap()
-        }
+        OutputFormat::Json => serde_json::to_writer(io::stdout(), &file).unwrap(),
+        OutputFormat::PrettyJson => serde_json::to_writer_pretty(io::stdout(), &file).unwrap(),
     }
 }
 
 #[derive(StructOpt)]
-#[structopt(
-    about = "Parse some Structured Text into the corresponding Abstract Syntax Tree"
-)]
+#[structopt(about = "Parse some Structured Text into the corresponding Abstract Syntax Tree")]
 struct Args {
     #[structopt(
         default_value = "-",
@@ -50,8 +44,7 @@ impl Args {
         if self.file == Path::new("-") {
             Ok(Box::new(io::stdin()))
         } else {
-            std::fs::File::open(&self.file)
-                .map(|f| Box::new(f) as Box<dyn Read>)
+            std::fs::File::open(&self.file).map(|f| Box::new(f) as Box<dyn Read>)
         }
     }
 }
