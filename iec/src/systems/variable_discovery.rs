@@ -5,6 +5,8 @@ use iec_syntax::Item;
 use specs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, Write, WriteStorage};
 use std::collections::HashMap;
 
+/// Visits each function, program, or function block and translates their
+/// variable declarations.
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct VariableDiscovery;
 

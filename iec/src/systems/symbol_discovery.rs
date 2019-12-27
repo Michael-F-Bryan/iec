@@ -5,6 +5,7 @@ use iec_syntax::{File, Identifier, Item};
 use slog::Logger;
 use specs::{Entities, Join, ReadExpect, System, Write, WriteStorage};
 
+/// Resolves all globally-accessible symbols.
 #[derive(Debug, Copy, Clone, Default)]
 pub struct SymbolDiscovery;
 
