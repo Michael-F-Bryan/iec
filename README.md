@@ -9,7 +9,7 @@ A proof-of-concept IEC 61131-3 Compiler.
 > **Warning:** This project is still in development. Not (yet) fit for human
 > consumption.
 >
-> This project has been superseded by [Michael-F-Bryan/rustmatic](https://github.com/Michael-F-Bryan/rustmatic)
+> This project has been superseded by [Michael-F-Bryan/rustmatic](https://github.com/Michael-F-Bryan/rustmatic).
 
 ## License
 
