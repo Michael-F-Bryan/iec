@@ -109,11 +109,7 @@ pub struct Declaration {
 }
 
 impl Declaration {
-    pub fn new(
-        ident: Identifier,
-        ty: Identifier,
-        span: ByteSpan,
-    ) -> Declaration {
+    pub fn new(ident: Identifier, ty: Identifier, span: ByteSpan) -> Declaration {
         Declaration { ident, ty, span }
     }
 }

@@ -1,4 +1,5 @@
 use codespan_reporting::{Diagnostic, Severity};
+use std::iter::Extend;
 
 /// A collection of user diagnostics.
 #[derive(Debug, Clone, Default)]
@@ -31,5 +32,26 @@ impl Diagnostics {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn drain<'this>(&'this mut self) -> impl Iterator<Item = Diagnostic> + 'this {
+        self.0.drain(..)
+    }
+}
+
+impl Extend<Diagnostic> for Diagnostics {
+    fn extend<I: IntoIterator<Item = Diagnostic>>(&mut self, items: I) {
+        for item in items {
+            self.push(item);
+        }
+    }
+}
+
+impl IntoIterator for Diagnostics {
+    type Item = Diagnostic;
+    type IntoIter = <Vec<Diagnostic> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }

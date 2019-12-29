@@ -8,12 +8,11 @@ use codespan::{ByteOffset, ByteSpan, CodeMap, FileMap};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use codespan_reporting::{Diagnostic, Label};
 use failure::{Error, ResultExt};
-use heapsize::HeapSizeOf;
-use iec::passes::PassContext;
 use iec::{CompilationUnit, Diagnostics};
 use iec_syntax::File;
 use slog::{Drain, Level, Logger};
 use slog_derive::KV;
+use specs::World;
 use std::str::FromStr;
 use std::time::Instant;
 use structopt::StructOpt;
@@ -68,7 +67,6 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
 
     let duration = Instant::now() - start_syntax;
     slog::debug!(syntax_logger, "Finished syntactic analysis"; 
-        "memory-usage" => file.heap_size_of_children(),
         "execution-time" => format_args!("{}.{:03}s", duration.as_secs(), duration.subsec_millis()));
 
     let mut diags = Diagnostics::new();
@@ -77,7 +75,7 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
     slog::debug!(semantic_logger, "Started semantic analysis");
     let start_semantics = Instant::now();
 
-    let cu = semantic_analysis(&file, &mut diags, logger);
+    let (_world, cu) = semantic_analysis(file, &mut diags, logger);
 
     if diags.has_errors() {
         let mut ss = StandardStream::stdout(ColorChoice::Auto);
@@ -89,8 +87,7 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
 
     let duration = Instant::now() - start_semantics;
     slog::debug!(semantic_logger, "Finished semantic analysis";
-        "execution-time" => format_args!("{}.{:03}s", duration.as_secs(), duration.subsec_millis()),
-        "memory-usage" => cu.heap_size_of_children() + file.heap_size_of_children());
+        "execution-time" => format_args!("{}.{:03}s", duration.as_secs(), duration.subsec_millis()));
 
     let duration = Instant::now() - start;
     slog::info!(logger, "Compilation finished"; 
@@ -101,15 +98,12 @@ fn run(args: &Args, logger: &Logger) -> Result<(), Error> {
 }
 
 fn semantic_analysis(
-    file: &File,
+    file: File,
     diags: &mut Diagnostics,
     logger: &Logger,
-) -> CompilationUnit {
-    let mut ctx = PassContext {
-        diags,
-        logger: logger.new(slog::o!("stage" => "semantic-analysis")),
-    };
-    iec::process(file, &mut ctx)
+) -> (World, CompilationUnit) {
+    let logger = logger.new(slog::o!("stage" => "semantic-analysis"));
+    iec::process(file, diags, &logger)
 }
 
 fn syntactic_analysis(file: &FileMap) -> Result<File, Diagnostic> {
@@ -119,21 +113,15 @@ fn syntactic_analysis(file: &FileMap) -> Result<File, Diagnostic> {
         .map_err(|e| e.map_location(|l| l - offset))
         .map_err(|e| match e {
             lalrpop_util::ParseError::InvalidToken { location } => {
-                Diagnostic::new_error("Invalid token").with_label(
-                    Label::new_primary(ByteSpan::from_offset(
-                        location,
-                        ByteOffset(1),
-                    )),
-                )
+                Diagnostic::new_error("Invalid token").with_label(Label::new_primary(
+                    ByteSpan::from_offset(location, ByteOffset(1)),
+                ))
             }
 
             lalrpop_util::ParseError::ExtraToken {
                 token: (start, tok, end),
-            } => Diagnostic::new_error(format!(
-                "Encountered \"{}\" when it wasn't expected",
-                tok
-            ))
-            .with_label(Label::new_primary(ByteSpan::new(start, end))),
+            } => Diagnostic::new_error(format!("Encountered \"{}\" when it wasn't expected", tok))
+                .with_label(Label::new_primary(ByteSpan::new(start, end))),
 
             lalrpop_util::ParseError::UnrecognizedToken {
                 token: Some((start, tok, end)),
@@ -148,14 +136,9 @@ fn syntactic_analysis(file: &FileMap) -> Result<File, Diagnostic> {
             lalrpop_util::ParseError::UnrecognizedToken {
                 token: None,
                 expected,
-            } => Diagnostic::new_error(format!(
-                "Expected one of {}",
-                expected.join(", ")
-            )),
+            } => Diagnostic::new_error(format!("Expected one of {}", expected.join(", "))),
 
-            lalrpop_util::ParseError::User { error } => {
-                Diagnostic::new_error(error.to_string())
-            }
+            lalrpop_util::ParseError::User { error } => Diagnostic::new_error(error.to_string()),
         })
 }
 
